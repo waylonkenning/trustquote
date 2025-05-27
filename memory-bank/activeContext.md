@@ -12,6 +12,7 @@ This file tracks the project's current status, including recent changes, current
 *   [2025-05-26 19:02:11] - Adding FastAPI and Uvicorn for REST API development.
 
 ## Recent Changes
+*   [2025-05-28 09:01:40] - Added `base58` to [`requirements.txt`](requirements.txt:1) to resolve a `ModuleNotFoundError` on Vercel.
 *   [2025-05-28 08:02:45] - Modified [`static/js/app.js`](static/js/app.js:1) to nest the Verifiable Credential under the `verifiable_credential` key in the payload sent to `/api/v1/publisher/`, resolving a 422 error.
 *   [2025-05-27 23:15:00] - Updated backend (`schemas.py`, `publisher_router.py`, `publisher_service.py`) to accept and process W3C Verifiable Credentials. Added `python-jose` for JWS handling.
 

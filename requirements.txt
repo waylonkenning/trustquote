@@ -4,3 +4,4 @@ pydantic
 cryptography
 pytest
 python-jose[cryptography]
+base58

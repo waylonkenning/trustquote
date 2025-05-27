@@ -7,6 +7,7 @@ This file tracks the project's progress using a task list format.
 2025-05-26 18:33:38 - Log of updates made.
 
 ## Completed Tasks
+*   [2025-05-28 09:01:46] - Added `base58` to [`requirements.txt`](requirements.txt:1) to fix Vercel deployment error.
 *   [2025-05-28 08:02:55] - Corrected payload structure in [`static/js/app.js`](static/js/app.js:1) for the `/api/v1/publisher/` endpoint. The Verifiable Credential is now sent nested under the `verifiable_credential` key.
 *   [2025-05-27 23:15:00] - Updated backend to process W3C Verifiable Credentials (VCs).
     *   Modified Pydantic schemas in [`src/core/schemas/schemas.py`](src/core/schemas/schemas.py:1) for VC structure.

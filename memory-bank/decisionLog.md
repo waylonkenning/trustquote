@@ -54,3 +54,6 @@ This file records architectural and implementation decisions using a list format
 *   [2025-05-28 08:02:32] - Modified [`static/js/app.js`](static/js/app.js:1) in the `createAndPublishVerifiableInformation` function. The `fetch` call to `/api/v1/publisher/` now sends the Verifiable Credential (VC) nested under the key `verifiable_credential` in the request body (i.e., `JSON.stringify({ verifiable_credential: vcObject })`).
     *   Rationale: To align the client-side request payload with the backend Pydantic model expectation (`PublishContentRequestSchema`), resolving a 422 Unprocessable Content error. The backend expects the VC to be under a specific key.
     *   Implications: The frontend request to the publisher endpoint should now be correctly processed by the backend.
+*   [2025-05-28 09:01:24] - Added `base58` to [`requirements.txt`](requirements.txt:1) to resolve `ModuleNotFoundError` on Vercel.
+    *   Rationale: The application was failing due to the missing `base58` dependency, which is imported in [`src/core/crypto/crypto_utils.py`](src/core/crypto/crypto_utils.py:7).
+    *   Implications: Vercel build process should now install `base58`, resolving the runtime error.
