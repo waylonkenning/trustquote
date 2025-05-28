@@ -76,8 +76,8 @@ def deserialize_private_key_from_pem(pem_data: str) -> ed25519.Ed25519PrivateKey
         password=None
     )
 
-def deserialize_public_key_from_pem(pem_data: str) -> ed25519.Ed25519PublicKey:
-    """Deserializes an Ed25519 public key from PEM format."""
+def deserialize_public_key_from_pem(pem_data: str) -> ec.EllipticCurvePublicKey | ed25519.Ed25519PublicKey:
+    """Deserializes a public key from PEM format (supports EC and Ed25519)."""
     return serialization.load_pem_public_key(pem_data.encode('utf-8'))
 
 def public_key_bytes_to_did_key(public_key_bytes: bytes, public_key_object: Optional[object] = None) -> str:

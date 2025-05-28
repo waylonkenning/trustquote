@@ -159,11 +159,11 @@ const publicKeySection = document.getElementById('publicKeySection');
                                                               // For did:key, the multiformats prefix for P-256 (secp256r1) uncompressed public key is `zQ3s`.
                                                               // This `zQ3s` implies a certain encoding.
                                                               // The `did:key` spec often uses `z` + base58btc(multicodec_prefix + key_bytes).
-                                                              // For P-256 (secp256r1) uncompressed public key, the multicodec prefix is 0x1201.
-        const p256UncompressedPrefix = new Uint8Array([0x12, 0x01]); // This is the multicodec prefix for secp256r1 public key.
-        const publicKeyBytes = new Uint8Array(rawPublicKeyBuffer); // Should be 65 bytes (0x04 + X + Y)
-        
-        const prefixedKeyBytes = new Uint8Array(p256UncompressedPrefix.length + publicKeyBytes.length);
+                                                              // For P-256 (secp256r1) uncompressed public key, the multicodec prefix is 0x1200.
+                                                              const p256UncompressedPrefix = new Uint8Array([0x12, 0x00]); // Correct multicodec prefix for secp256r1-pub
+                                                              const publicKeyBytes = new Uint8Array(rawPublicKeyBuffer); // Should be 65 bytes (0x04 + X + Y)
+                                                              
+                                                              const prefixedKeyBytes = new Uint8Array(p256UncompressedPrefix.length + publicKeyBytes.length);
         prefixedKeyBytes.set(p256UncompressedPrefix);
         prefixedKeyBytes.set(publicKeyBytes, p256UncompressedPrefix.length);
 
@@ -214,6 +214,23 @@ function canonicalJsonStringify(obj) {
             );
             
             currentPrivateKey = keyPair.privateKey;
+            const currentPublicKeyForTest = keyPair.publicKey; // Use the CryptoKey object directly
+
+            // Perform a self-test of the newly generated key pair
+            try {
+                const testMessage = new TextEncoder().encode("self-test-generated");
+                const signature = await window.crypto.subtle.sign({ name: "ECDSA", hash: { name: "SHA-256" } }, currentPrivateKey, testMessage);
+                const isValid = await window.crypto.subtle.verify({ name: "ECDSA", hash: { name: "SHA-256" } }, currentPublicKeyForTest, signature, testMessage);
+                if (isValid) {
+                    console.log("CLIENT_GENERATED_KEY_SELF_TEST: PASSED");
+                } else {
+                    console.error("CLIENT_GENERATED_KEY_SELF_TEST: FAILED");
+                    setStatusMessage("Error: Client generated key pair self-test failed.", 'error');
+                }
+            } catch (e) {
+                console.error("CLIENT_GENERATED_KEY_SELF_TEST: ERROR", e);
+                setStatusMessage(`Error: Client generated key pair self-test error: ${e.message}`, 'error');
+            }
 
             // Public Key
             const publicKeySpki = await window.crypto.subtle.exportKey('spki', keyPair.publicKey);
@@ -265,12 +282,10 @@ function canonicalJsonStringify(obj) {
                 if (publishBtn) publishBtn.disabled = false;
                 setStatusMessage("Keys and DID loaded from storage successfully.", 'success');
 
-                // Hide key generation and display elements
-                if (generateKeysBtn) generateKeysBtn.style.display = 'none';
-                if (publicKeySection) publicKeySection.style.display = 'none';
-                if (privateKeySection) privateKeySection.style.display = 'none';
                 // Ensure DID display is visible (though it should be by default)
                 if (didDisplay) didDisplay.style.display = 'block'; // or 'inline' or '' depending on original styling
+                // Ensure the generateKeysBtn is always visible
+                if (generateKeysBtn) generateKeysBtn.style.display = ''; // Reset to default or 'block'/'inline' as appropriate
 
                 return true;
             } else {
@@ -414,9 +429,13 @@ function canonicalJsonStringify(obj) {
             delete vcToSign.proof; // Remove the proof object before signing
 
             const canonicalPayloadString = canonicalJsonStringify(vcToSign);
+console.log("CLIENT_CANONICAL_PAYLOAD_FOR_SIGNING:", canonicalPayloadString);
+            const clientPayloadBytes = new TextEncoder().encode(canonicalPayloadString);
+            console.log("CLIENT_CANONICAL_PAYLOAD_BYTES (hex):", Array.from(clientPayloadBytes).map(b => b.toString(16).padStart(2, '0')).join(''));
             // console.log("Client-side canonical payload for signing:", canonicalPayloadString); // For debugging
 
             const jwsHeader = { alg: "ES256", typ: "JWT" };
+            console.log("CLIENT_JWS_PROTECTED_HEADER:", JSON.stringify(jwsHeader)); // Log the JWS header
             const encodedHeader = base64urlEncode(JSON.stringify(jwsHeader));
 
             // Sign the canonical payload string directly
@@ -432,6 +451,7 @@ function canonicalJsonStringify(obj) {
 
             // Construct JWS with detached payload (empty payload part)
             const jws = `${encodedHeader}..${encodedSignature}`;
+            console.log("CLIENT_JWS_TOKEN_SENT:", jws); // Log the JWS token
             verifiableCredential.proof.jws = jws; // Store the detached JWS
 
             setStatusMessage("Verifiable Credential signed successfully (detached JWS).", 'success');

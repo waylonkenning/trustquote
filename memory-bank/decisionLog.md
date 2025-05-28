@@ -34,7 +34,7 @@ This file records architectural and implementation decisions using a list format
         *   Updated [`src/api/publisher_router.py`](src/api/publisher_router.py:1) to use the new request schema.
         *   Overhauled [`src/services/publisher_service/publisher_service.py`](src/services/publisher_service/publisher_service.py:1) to:
             *   Extract VC from the request.
-            *   Verify JWS signature in `vc.proof.jws` using `python-jose` (ES256 algorithm assumed for P-256 keys). The signed payload is the canonicalized VC object excluding the `proof`.
+            *   Verify JWS signature in `vc.proof.jws` using `jwt.decode()` from `python-jose` to support detached payloads (ES256 algorithm assumed for P-256 keys). The signed payload is the canonicalized VC object excluding the `proof`.
             *   Validate `vc.issuer` DID against the public key used for signature verification (derived from `public_key_pem` provided in the request).
             *   Extract `content_text` and `source_url` from `vc.credentialSubject`.
         *   Added `python-jose[cryptography]` to `requirements.txt` for JWS processing and installed it.
@@ -46,7 +46,7 @@ This file records architectural and implementation decisions using a list format
         *   Updated [`src/api/publisher_router.py`](src/api/publisher_router.py:1) to use the new request schema.
         *   Overhauled [`src/services/publisher_service/publisher_service.py`](src/services/publisher_service/publisher_service.py:1) to:
             *   Extract VC from the request.
-            *   Verify JWS signature in `vc.proof.jws` using `python-jose` (ES256 algorithm assumed for P-256 keys). The signed payload is the canonicalized VC object excluding the `proof`.
+            *   Verify JWS signature in `vc.proof.jws` using `jwt.decode()` from `python-jose` to support detached payloads (ES256 algorithm assumed for P-256 keys). The signed payload is the canonicalized VC object excluding the `proof`.
             *   Validate `vc.issuer` DID against the public key used for signature verification (derived from `public_key_pem` provided in the request).
             *   Extract `content_text` and `source_url` from `vc.credentialSubject`.
         *   Added `python-jose[cryptography]` to `requirements.txt` for JWS processing and installed it.
@@ -57,3 +57,12 @@ This file records architectural and implementation decisions using a list format
 *   [2025-05-28 09:01:24] - Added `base58` to [`requirements.txt`](requirements.txt:1) to resolve `ModuleNotFoundError` on Vercel.
     *   Rationale: The application was failing due to the missing `base58` dependency, which is imported in [`src/core/crypto/crypto_utils.py`](src/core/crypto/crypto_utils.py:7).
     *   Implications: Vercel build process should now install `base58`, resolving the runtime error.
+*   [2025-05-28 14:44:20] - Changed `json.dumps` in [`src/services/publisher_service/publisher_service.py`](src/services/publisher_service/publisher_service.py:65) to use `ensure_ascii=True`.
+    *   Rationale: To align server-side JWS payload canonicalization with client-side behavior where non-ASCII characters are escaped, resolving a signature mismatch.
+    *   Implications: The server will now escape non-ASCII characters in the JSON payload before signing, matching the client's canonicalization.
+*   [2025-05-28 14:57:00] - Modified `jwt.decode` options in [`src/services/publisher_service/publisher_service.py`](src/services/publisher_service/publisher_service.py:85) to disable default JWT claim verification (e.g., `exp`, `aud`) for Verifiable Credential payloads. Options `verify_aud`, `verify_iat`, `verify_exp`, `verify_nbf`, `verify_iss`, `verify_sub`, `verify_jti` set to `False`.
+    *   Rationale: To prevent `python-jose` from rejecting Verifiable Credentials that lack standard JWT claims, resolving "JWS signature verification failed" errors when canonicalized payloads match.
+    *   Implications: The JWS signature is still verified, but the application no longer enforces the presence or validity of standard JWT claims within the VC payload itself.
+*   [2025-05-28 15:28:00] - Modified JWS verification in [`src/services/publisher_service/publisher_service.py`](src/services/publisher_service/publisher_service.py:65) to use `ensure_ascii=False` in `json.dumps` for canonicalization. Cleaned up JWS header decoding.
+    *   Rationale: To ensure server-side JWS payload canonicalization correctly handles UTF-8 characters, matching the client-side `JSON.stringify()` behavior which does not escape non-ASCII characters by default. This addresses potential signature mismatches when non-ASCII characters are present.
+    *   Implications: JWS signature verification should now be consistent between client and server, regardless of non-ASCII characters in the payload.

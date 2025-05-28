@@ -14,7 +14,7 @@ class VCProof(BaseModel):
     type: str = Field(..., example="JsonWebSignature2020") # Or Ed25519Signature2018, EcdsaSecp256k1Signature2019 etc.
     created: str = Field(..., example="2024-05-27T10:00:00Z") # ISO8601 datetime
     verificationMethod: str = Field(..., example="did:key:zQ3sh...#keys-1")
-    proofPurpose: str = Field(..., example="assertionMethod") # Or authentication, etc.
+    proofPurpose: Optional[str] = Field("assertionMethod", example="assertionMethod") # Or authentication, etc. Made optional with default
     jws: str = Field(..., example="eyJh...SflK") # The JWS signature string
 
 class VerifiableCredentialSchema(BaseModel):
@@ -61,7 +61,7 @@ class VerifiableContentSchema(BaseModel):
     content_hash: str = Field(..., title="Content Hash", description="The cryptographic hash (e.g., SHA-256) of the original content.", example="a1b2c3d4e5f6...")
     signature: str = Field(..., title="Digital Signature", description="The base64 encoded digital signature of the content_hash.", example="base64_encoded_signature_string")
     did: str = Field(..., title="Decentralized Identifier", description="The DID of the publisher (e.g., 'did:key:zQ3sh...').", example="did:key:zQ3sh...")
-    public_key_pem: str = Field(..., title="Public Key PEM", description="PEM-formatted public key associated with the DID.", example="-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END PUBLIC KEY-----")
+    public_key_pem: Optional[str] = Field(None, title="Public Key PEM", description="PEM-formatted public key associated with the DID.", example="-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END PUBLIC KEY-----")
     source_url: Optional[str] = Field(None, title="Source URL", description="Optional URL of the original content source.", example="https://example.com/article/123")
     timestamp: datetime = Field(..., title="Publication Timestamp", description="The ISO 8601 timestamp indicating when the content was signed/published.", example="2023-10-26T12:00:00Z")
     algorithm: Optional[str] = Field(None, title="Signature Algorithm", description="The algorithm used for signing (e.g., 'Ed25519'). Inferred if not provided.", example="Ed25519")

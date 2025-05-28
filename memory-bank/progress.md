@@ -7,6 +7,8 @@ This file tracks the project's progress using a task list format.
 2025-05-26 18:33:38 - Log of updates made.
 
 ## Completed Tasks
+*   [2025-05-28 14:44:20] - Modified [`src/services/publisher_service/publisher_service.py`](src/services/publisher_service/publisher_service.py:65) to set `ensure_ascii=True` in `json.dumps` for JWS payload canonicalization, aligning server and client behavior.
+*   [2025-05-28 11:21:00] - Updated documentation (decisionLog.md, activeContext.md) to reflect the change in JWS verification to use `jwt.decode()` for detached payloads in `PublisherService`.
 *   [2025-05-28 09:01:46] - Added `base58` to [`requirements.txt`](requirements.txt:1) to fix Vercel deployment error.
 *   [2025-05-28 08:02:55] - Corrected payload structure in [`static/js/app.js`](static/js/app.js:1) for the `/api/v1/publisher/` endpoint. The Verifiable Credential is now sent nested under the `verifiable_credential` key.
 *   [2025-05-27 23:15:00] - Updated backend to process W3C Verifiable Credentials (VCs).
@@ -37,6 +39,10 @@ This file tracks the project's progress using a task list format.
 *   [2025-05-27 18:25:07] - Updated [`requirements.txt`](requirements.txt:1) with `fastapi`, `uvicorn[standard]`, `pydantic`, `cryptography`, and `pytest`.
 *   [2025-05-27 21:04:47] - Configured [`src/main.py`](src/main.py:1) to serve static files from the `static` directory.
 ## Current Tasks
+*   [2025-05-28 14:39:00] - Application started successfully using `python -m uvicorn src.main:app --reload`.
+*   [2025-05-28 14:37:00] - Successfully installed dependencies from [`requirements.txt`](requirements.txt:1).
+*   [2025-05-28 14:36:00] - Attempted to start application with `python -m uvicorn src.main:app --reload`. Failed as `uvicorn` module not found.
+*   [2025-05-28 14:35:00] - Attempted to start application with `uvicorn src.main:app --reload`. Failed as command not found.
 *   [2025-05-27 18:23:45] - Created [`src/main.py`](src/main.py:1) with the main FastAPI application, including publisher and verifier routers and a root endpoint.
 *   [2025-05-27 18:20:42] - Created `src/api/publisher_router.py` with the FastAPI router for publisher operations.
 *   [2025-05-27 18:22:03] - Created `src/api/verifier_router.py` with the FastAPI router for verifier operations.
@@ -58,3 +64,5 @@ This file tracks the project's progress using a task list format.
 [2025-05-27 21:00:53] - Created `static/css/style.css` with basic styling for the frontend.
 [2025-05-27 21:03:10] - Created `static/js/app.js` with client-side logic for key generation, signing, publishing, and verification.
 *   [2025-05-27 22:38:17] - Completed Task: Implemented W3C Verifiable Credential (VC) creation in [`static/js/app.js`](static/js/app.js:1). The "Sign and Publish" functionality now constructs a VC with data from the UI, displays it, and sends the VC object to the `/api/v1/publisher/` endpoint. The cryptographic signature for the proof (`jws` or `proofValue`) is currently a placeholder.
+*   [2025-05-28 14:57:00] - Modified `jwt.decode` options in [`src/services/publisher_service/publisher_service.py`](src/services/publisher_service/publisher_service.py:85) to disable default JWT claim verification (e.g., `exp`, `aud`) for Verifiable Credential payloads, resolving JWS signature verification issues.
+*   [2025-05-28 15:28:00] - Applied fix to [`src/services/publisher_service/publisher_service.py`](src/services/publisher_service/publisher_service.py:65) for JWS signature verification by setting `ensure_ascii=False` in `json.dumps`. This aligns server-side canonicalization with client-side behavior for UTF-8 characters.

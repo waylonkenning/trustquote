@@ -6,9 +6,9 @@ from datetime import datetime, timezone
 from fastapi import HTTPException
 from jose import jws, jwt
 from jose.exceptions import JOSEError, JWTError
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import serialization, hashes # Added hashes for direct verification
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.exceptions import UnsupportedAlgorithm
+from cryptography.exceptions import UnsupportedAlgorithm, InvalidSignature # Added InvalidSignature
 
 from src.core.models.models import VerifiableContentModel # May not be directly used if response is VerifiableContentSchema
 from src.core.schemas.schemas import PublishContentRequestSchema, VerifiableContentSchema, VerifiableCredentialSchema
@@ -33,63 +33,114 @@ class PublisherService:
             raise HTTPException(status_code=400, detail="VC proof or JWS missing.")
 
         jws_token = vc.proof.jws
+        print(f"SERVER_JWS_TOKEN_RECEIVED: {jws_token}") 
 
-        # 1. Resolve Public Key
-        # For now, prioritize public_key_pem from the request if provided.
-        # Otherwise, attempt to derive/resolve from vc.proof.verificationMethod (more complex, future step)
         if not public_key_pem:
-            # Basic attempt: if verificationMethod is a DID and public_key_pem was expected from client for did:key
-            # This part needs robust implementation for resolving various DIDs and key types.
-            # For now, if public_key_pem is not directly provided, we might be stuck if it's not embedded.
-            # The task implies client might send public_key_pem or it's derivable/embedded.
-            # Let's assume for now if not in request, it must be resolvable from verificationMethod,
-            # but we'll require it from request for simplicity in this step.
             raise HTTPException(status_code=400, detail="Public key PEM must be provided for signature verification at this stage.")
 
-        try:
-            public_key_object = deserialize_public_key_from_pem(public_key_pem)
-            if not isinstance(public_key_object, ec.EllipticCurvePublicKey): # Assuming P-256 as per client
-                raise HTTPException(status_code=400, detail="Public key is not an Elliptic Curve key (e.g., P-256).")
-        except (ValueError, UnsupportedAlgorithm) as e:
-            raise HTTPException(status_code=400, detail=f"Invalid or unsupported public key PEM: {str(e)}")
+        print(f"SERVER_RECEIVED_PUBLIC_KEY_PEM_FOR_VERIFICATION:\n{public_key_pem}") 
 
-        # 2. Reconstruct the payload that was signed
-        # The JWS payload is typically the VC object without the 'proof' field, then canonicalized.
         vc_payload_dict = vc.model_dump(exclude_none=True, by_alias=True)
         if 'proof' in vc_payload_dict:
             del vc_payload_dict['proof']
 
         try:
-            # Canonicalize the payload as JSON string (UTF-8, sorted keys, no extra whitespace)
-            # This must match exactly how the client prepared it.
             canonical_payload_string = json.dumps(vc_payload_dict, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+            print(f"SERVER_CANONICAL_PAYLOAD_FOR_VERIFICATION: {canonical_payload_string}")
             signed_payload_bytes = canonical_payload_string.encode('utf-8')
+            print(f"SERVER_CANONICAL_PAYLOAD_BYTES (hex): {signed_payload_bytes.hex()}")
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Error canonicalizing VC payload for verification: {str(e)}")
 
-        # 3. Verify JWS
         try:
-            # Extract headers to check alg
-            jws_header_b64 = jws_token.split('.')[0]
-            jws_header_json = base64.urlsafe_b64decode(jws_header_b64 + '=' * (-len(jws_header_b64) % 4)).decode('utf-8')
-            jws_header = json.loads(jws_header_json)
-            expected_alg = "ES256" # For P-256 keys
-            if jws_header.get("alg") != expected_alg:
-                raise HTTPException(status_code=400, detail=f"Invalid JWS algorithm. Expected {expected_alg}, got {jws_header.get('alg')}")
+            try:
+                public_key_object = deserialize_public_key_from_pem(public_key_pem)
+                if not isinstance(public_key_object, ec.EllipticCurvePublicKey):
+                    raise HTTPException(status_code=400, detail="Public key is not an Elliptic Curve key (e.g., P-256).")
+            except (ValueError, UnsupportedAlgorithm) as e:
+                raise HTTPException(status_code=400, detail=f"Invalid or unsupported public key PEM: {str(e)}")
 
-            # python-jose's jws.verify expects the raw payload string, not bytes for some flows,
-            # but for detached JWS or specific algs, bytes might be needed.
-            # Here, we pass the reconstructed payload string.
-            # The `jws.verify` function will internally handle hashing if the JWS was signed over a hash.
-            # However, W3C VCs are usually signed over the canonicalized VC data itself.
-            jws.verify(jws_token, public_key_object, algorithms=[expected_alg], detached_payload=signed_payload_bytes)
-            # If verify doesn't raise an exception, the signature is valid.
-        except JWTError as e: # Covers various JWS issues like signature invalid, alg mismatch etc.
-            raise HTTPException(status_code=400, detail=f"JWS signature verification failed: {str(e)}")
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Unexpected error during JWS verification: {str(e)}")
+            jws_parts = jws_token.split('.')
+            if len(jws_parts) != 3: 
+                raise HTTPException(status_code=400, detail=f"Invalid JWS format: expected 3 segments (header..signature), got {len(jws_parts)}.")
+            
+            jws_header_b64 = jws_parts[0]
+            # jws_signature_b64url = jws_parts[2] # Not needed if only python-jose is used for final verification
+
+            try:
+                padded_jws_header_b64 = jws_header_b64 + '=' * (-len(jws_header_b64) % 4)
+                jws_header_str = base64.urlsafe_b64decode(padded_jws_header_b64).decode('utf-8')
+                jws_header = json.loads(jws_header_str)
+                print(f"SERVER_JWS_PROTECTED_HEADER: {jws_header_str}")
+            except json.JSONDecodeError as e:
+                # Using jws_header_b64 directly in the error message as jws_header_json_decoded might not be defined
+                raise HTTPException(status_code=400, detail=f"Invalid JWS header: not valid JSON. Error: {str(e)}. Header (b64): '{jws_header_b64}'")
+            except UnicodeDecodeError as e:
+                raise HTTPException(status_code=400, detail=f"Invalid JWS header: not valid UTF-8. Error: {str(e)}. Header (b64): '{jws_header_b64}'")
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Invalid JWS header: cannot decode or parse. Error: {str(e)}")
+
+            if not isinstance(jws_header, dict):
+                error_detail = f"Invalid JWS header: expected a JSON object (dict), but got {type(jws_header).__name__}."
+                # Simplified content logging for non-dict header
+                if isinstance(jws_header, (bytes, str)): # Check if it's bytes or str before trying to decode/use directly
+                     error_detail += f" Content: {jws_header!r}" # Use !r for unambiguous representation
+                raise HTTPException(status_code=400, detail=error_detail)
+
+            expected_alg = "ES256"
+            actual_alg = jws_header.get("alg")
+
+            if actual_alg != expected_alg:
+                raise HTTPException(status_code=400, detail=f"Invalid JWS algorithm. Expected {expected_alg}, got {actual_alg or 'None'}.")
+
+            # --- Direct signature verification using cryptography library (COMMENTED OUT FOR THIS TEST) ---
+            # try:
+            #     jws_signature_b64url_for_direct = jws_parts[2] # Need to define this if direct check is active
+            #     padded_signature_b64url_direct = jws_signature_b64url_for_direct + '=' * (-len(jws_signature_b64url_for_direct) % 4)
+            #     signature_bytes_direct = base64.urlsafe_b64decode(padded_signature_b64url_direct)
+            #     print(f"SERVER_DECODED_SIGNATURE_BYTES (direct check - hex): {signature_bytes_direct.hex()}")
+            #     public_key_object.verify(
+            #         signature_bytes_direct,
+            #         signed_payload_bytes, 
+            #         ec.ECDSA(hashes.SHA256())
+            #     )
+            #     print("Direct cryptography signature verification SUCCEEDED.")
+            # except InvalidSignature:
+            #     print("Direct cryptography signature verification FAILED: InvalidSignature.")
+            #     # Not raising here to let python-jose try
+            # except Exception as e_crypto:
+            #     print(f"Direct cryptography signature verification FAILED with error: {str(e_crypto)}")
+            #     # Not raising here to let python-jose try
+            # --- End direct signature verification ---
+
+            # Attempt verification ONLY with python-jose to get its specific error.
+            try:
+                jwt.decode(jws_token, public_key_object, algorithms=[expected_alg], options={
+                    'detached_payload': signed_payload_bytes,
+                    'verify_aud': False,
+                    'verify_iat': False,
+                    'verify_exp': False,
+                    'verify_nbf': False,
+                    'verify_iss': False,
+                    'verify_sub': False,
+                    'verify_jti': False
+                })
+                print("python-jose jwt.decode SUCCEEDED.")
+            except JWTError as e_jose:
+                print(f"python-jose jwt.decode FAILED: {str(e_jose)}")
+                raise HTTPException(status_code=400, detail=f"JWS signature verification failed (python-jose): {str(e_jose)}")
+            except Exception as e_jose_other: # Catch other unexpected errors from jwt.decode
+                print(f"python-jose jwt.decode FAILED with other error: {str(e_jose_other)}")
+                raise HTTPException(status_code=500, detail=f"Unexpected error during JWS verification (python-jose other): {str(e_jose_other)}")
+
+        except HTTPException as e_http: 
+            raise e_http
+        except Exception as e: 
+            print(f"General unexpected error in _verify_vc_signature: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"General unexpected error during JWS verification setup: {str(e)}")
 
         return public_key_object
+
 
     async def _validate_issuer_did(self, vc_issuer: str, public_key_object: ec.EllipticCurvePublicKey):
         """
@@ -152,9 +203,17 @@ class PublisherService:
 
         print(f"PublisherService: Processing VC publish request for issuer '{vc.issuer}'...")
 
-        # 1. Verify VC Signature (and get public key object)
+        # 1. Verify VC Signature (and get public key object, though it's now just the PEM string if direct passing works)
         try:
-            verified_public_key_object = await self._verify_vc_signature(vc, public_key_pem_from_request)
+            # _verify_vc_signature will now effectively just check the signature
+            # and return the public_key_pem if successful, not a key object.
+            # We need to adjust what _validate_issuer_did expects or how it gets the key object.
+            # For now, let's assume _verify_vc_signature returns the PEM, and _validate_issuer_did will re-deserialize.
+            # This is slightly inefficient but isolates the jwt.decode step.
+            await self._verify_vc_signature(vc, public_key_pem_from_request)
+            # If _verify_vc_signature passes, we need the key object for _validate_issuer_did
+            verified_public_key_object = deserialize_public_key_from_pem(public_key_pem_from_request)
+
         except HTTPException:
             raise
         except Exception as e:
@@ -187,10 +246,38 @@ class PublisherService:
         if not content_text: # Basic validation
             raise HTTPException(status_code=400, detail="VC credentialSubject must contain 'content_text'.")
 
-        # 4. Construct VerifiableContentSchema for response and storage
-        # The VerifiableContentSchema is what we return and store.
-        # It needs a content_hash, signature (from VC proof), did (issuer), public_key_pem, etc.
+        # 4. Construct VerifiableContentSchema
+        response_schema = await self._create_verifiable_content_entry(
+            vc=vc,
+            vc_issuer_did_str=vc_issuer_did_str,
+            public_key_pem_from_request=public_key_pem_from_request,
+            verified_public_key_object=verified_public_key_object,
+            content_text=content_text,
+            source_url=source_url
+        )
 
+        # Store in the in-memory dictionary
+        content_hash_of_subject = response_schema.content_hash # Get hash from created schema
+        self._published_data[content_hash_of_subject] = response_schema
+        print(f"PublisherService: VC for content with subject hash '{content_hash_of_subject}' published and stored for issuer '{vc_issuer_did_str}'.")
+
+        return response_schema
+
+    async def _create_verifiable_content_entry(
+        self,
+        vc: VerifiableCredentialSchema,
+        vc_issuer_did_str: str,
+        public_key_pem_from_request: Optional[str],
+        verified_public_key_object: ec.EllipticCurvePublicKey,
+        content_text: str,
+        source_url: Optional[str],
+        did_from_request: Optional[str] = None,
+        timestamp_from_request: Optional[datetime] = None,
+        signature_from_request: Optional[str] = None  # Added signature_from_request
+    ) -> VerifiableContentSchema:
+        """
+        Constructs and returns a VerifiableContentSchema instance.
+        """
         # Generate a hash of the core content for identification/storage key
         # This hash is of the *credential subject content*, not the whole VC.
         payload_to_hash_dict = {"content_text": content_text, "source_url": source_url}
@@ -198,35 +285,42 @@ class PublisherService:
         content_hash_of_subject = generate_content_hash(canonical_subject_payload_string.encode('utf-8'))
 
         # Use the public_key_pem that was successfully used for verification
-        # If verification used an embedded key, this might need to be reconstructed or fetched.
-        # For now, assume public_key_pem_from_request was valid and used.
         final_public_key_pem = public_key_pem_from_request
-        if not final_public_key_pem and isinstance(verified_public_key_object, ec.EllipticCurvePublicKey):
-             # If PEM was not in request but key was resolved (e.g. embedded in VC, future state)
-             # we might need to serialize verified_public_key_object back to PEM.
-             # This is complex if it wasn't originally from PEM.
-             # For now, if public_key_pem_from_request is None, this will be None.
-             # The VerifiableContentSchema allows public_key_pem to be optional.
-             pass
+        # (Logic for deriving PEM if not in request can be added here if needed)
 
+        final_timestamp = timestamp_from_request
+        if final_timestamp is None:
+            try:
+                if isinstance(vc.issuanceDate, str):
+                    final_timestamp = datetime.fromisoformat(vc.issuanceDate.replace("Z", "+00:00"))
+                elif isinstance(vc.issuanceDate, datetime):
+                    final_timestamp = vc.issuanceDate
+                    if final_timestamp.tzinfo is None or final_timestamp.tzinfo.utcoffset(final_timestamp) is None:
+                        final_timestamp = final_timestamp.replace(tzinfo=timezone.utc)
+                else:
+                    raise ValueError("vc.issuanceDate is not a valid ISO string or datetime object.")
+            except ValueError as e:
+                print(f"Warning: Could not parse vc.issuanceDate '{vc.issuanceDate}'. Error: {e}. Falling back to current UTC time.")
+                final_timestamp = datetime.now(timezone.utc)
+        
+        if final_timestamp is None: # Should not happen if logic above is correct
+            print("Warning: final_timestamp is still None. Defaulting to current UTC time.")
+            final_timestamp = datetime.now(timezone.utc)
+
+        # Determine the signature to use
+        final_signature = signature_from_request if signature_from_request is not None else vc.proof.jws
 
         response_schema = VerifiableContentSchema(
             content=content_text,
-            content_hash=content_hash_of_subject, # Hash of the credentialSubject's main data
-            signature=vc.proof.jws, # The JWS of the VC
-            did=vc_issuer_did_str,
-            public_key_pem=final_public_key_pem, # The PEM used for verification
+            content_hash=content_hash_of_subject,
+            signature=final_signature, # Use final_signature
+            did=did_from_request if did_from_request is not None else vc_issuer_did_str,
+            public_key_pem=final_public_key_pem,
             source_url=source_url,
-            timestamp=datetime.fromisoformat(vc.issuanceDate.replace("Z", "+00:00")), # Ensure timezone aware
-            algorithm=vc.proof.type, # e.g., JsonWebSignature2020
-            # version and metadata could be extracted if present in VC or credentialSubject
-            metadata=credential_subject.get("metadata", None)
+            timestamp=final_timestamp,
+            algorithm=vc.proof.type, # Assuming this is the algorithm of the VC proof
+            metadata=vc.credentialSubject.get("metadata", None)
         )
-
-        # Store in the in-memory dictionary
-        self._published_data[content_hash_of_subject] = response_schema
-        print(f"PublisherService: VC for content with subject hash '{content_hash_of_subject}' published and stored for issuer '{vc_issuer_did_str}'.")
-
         return response_schema
 
     def get_published_content_by_hash(self, content_hash: str) -> Optional[VerifiableContentSchema]:
