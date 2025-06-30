@@ -222,7 +222,7 @@ const nextBillingDate = computed(() => {
 
 // Methods
 const continueToApp = () => {
-  router.push('/')
+  router.push('/compose')
 }
 
 const goToAccount = () => {

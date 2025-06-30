@@ -203,11 +203,14 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import KuchiShogaEditor from '@/components/KuchiShogaEditor.vue'
 import NotationSettings from '@/components/NotationSettings.vue'
 import PremiumGate from '@/components/PremiumGate.vue'
 import { useFreemium } from '@/composables/useFreemium'
 import type { Composition } from '@/types/composition'
+
+const router = useRouter()
 
 // Freemium composable
 const {
@@ -285,13 +288,11 @@ const closeCreateDialog = () => {
 
 const handleUpgradeFromLimit = () => {
   showCompositionLimit.value = false
-  // Redirect to pricing or trigger upgrade flow
-  window.location.href = '/pricing'
+  router.push('/pricing')
 }
 
 const handleUpgrade = () => {
-  // Redirect to pricing or trigger upgrade flow
-  window.location.href = '/pricing'
+  router.push('/pricing')
 }
 
 const updatePattern = (partId: string, pattern: string) => {

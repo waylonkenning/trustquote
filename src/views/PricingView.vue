@@ -332,8 +332,9 @@ const comparisonFeatures = [
 const selectFreePlan = () => {
   if (!isLoggedIn.value) {
     router.push('/signup')
+  } else {
+    router.push('/compose')
   }
-  // If already on free plan, do nothing
 }
 
 const selectPremiumPlan = async () => {
