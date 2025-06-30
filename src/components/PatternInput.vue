@@ -5,7 +5,7 @@
         <button 
           data-testid="view-text"
           :class="{ active: viewMode === 'text' }"
-          @click="viewMode = 'text'"
+          @click="setViewMode('text')"
           class="tab-button"
         >
           Text Input
@@ -13,7 +13,7 @@
         <button 
           data-testid="view-visual"
           :class="{ active: viewMode === 'visual' }"
-          @click="viewMode = 'visual'"
+          @click="setViewMode('visual')"
           class="tab-button"
         >
           Linear Grid
@@ -21,7 +21,7 @@
         <button 
           data-testid="view-circular"
           :class="{ active: viewMode === 'circular' }"
-          @click="viewMode = 'circular'; console.log('Clicked circular, viewMode:', viewMode)"
+          @click="setViewMode('circular')"
           class="tab-button"
         >
           Circular View
@@ -105,13 +105,61 @@
       <!-- Circular Visualization Mode -->
       <div v-if="viewMode === 'circular'" class="circular-view-container" data-testid="circular-view-wrapper">
         <div class="circular-debug">Debug: Circular view is active, viewMode: {{ viewMode }}</div>
-        <CircularRhythmVisualizer 
-          :composition="{ id: 'temp', title: 'temp', parts: [part], tempo: tempo, createdAt: new Date() }"
-          :is-playing="isPlaying"
-          :current-beat="0"
-          :tempo="tempo"
-          @beat-updated="handleCircularBeatUpdate"
-        />
+        <div class="basic-circular-view" data-testid="circular-rhythm-container">
+          <svg 
+            data-testid="circular-beat-grid"
+            class="circular-svg"
+            viewBox="0 0 400 400"
+            width="400"
+            height="400"
+          >
+            <!-- Background circle -->
+            <circle
+              cx="200"
+              cy="200"
+              r="150"
+              fill="none"
+              stroke="#333"
+              stroke-width="2"
+            />
+            
+            <!-- Center point -->
+            <circle
+              data-testid="center-circle"
+              cx="200"
+              cy="200"
+              r="8"
+              fill="#ff6b6b"
+            />
+            
+            <!-- Beat markers with minimal reactivity -->
+            <g data-testid="beat-markers">
+              <circle cx="200" cy="50" r="12" :fill="getBeatFill(0)" stroke="#fff" stroke-width="2" data-testid="circular-beat-0" @click="onBeatClick(0)" style="cursor: pointer"/>
+              <circle cx="306" cy="94" r="12" :fill="getBeatFill(1)" stroke="#fff" stroke-width="2" data-testid="circular-beat-1" @click="onBeatClick(1)" style="cursor: pointer"/>
+              <circle cx="350" cy="200" r="12" :fill="getBeatFill(2)" stroke="#fff" stroke-width="2" data-testid="circular-beat-2" @click="onBeatClick(2)" style="cursor: pointer"/>
+              <circle cx="306" cy="306" r="12" :fill="getBeatFill(3)" stroke="#fff" stroke-width="2" data-testid="circular-beat-3" @click="onBeatClick(3)" style="cursor: pointer"/>
+              <circle cx="200" cy="350" r="12" :fill="getBeatFill(4)" stroke="#fff" stroke-width="2" data-testid="circular-beat-4" @click="onBeatClick(4)" style="cursor: pointer"/>
+              <circle cx="94" cy="306" r="12" :fill="getBeatFill(5)" stroke="#fff" stroke-width="2" data-testid="circular-beat-5" @click="onBeatClick(5)" style="cursor: pointer"/>
+              <circle cx="50" cy="200" r="12" :fill="getBeatFill(6)" stroke="#fff" stroke-width="2" data-testid="circular-beat-6" @click="onBeatClick(6)" style="cursor: pointer"/>
+              <circle cx="94" cy="94" r="12" :fill="getBeatFill(7)" stroke="#fff" stroke-width="2" data-testid="circular-beat-7" @click="onBeatClick(7)" style="cursor: pointer"/>
+              
+              <!-- Beat labels -->
+              <text v-if="getBeatSyllable(0)" x="200" y="54" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">{{ getBeatSyllable(0) }}</text>
+              <text v-if="getBeatSyllable(1)" x="306" y="98" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">{{ getBeatSyllable(1) }}</text>
+              <text v-if="getBeatSyllable(2)" x="350" y="204" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">{{ getBeatSyllable(2) }}</text>
+              <text v-if="getBeatSyllable(3)" x="306" y="310" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">{{ getBeatSyllable(3) }}</text>
+              <text v-if="getBeatSyllable(4)" x="200" y="354" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">{{ getBeatSyllable(4) }}</text>
+              <text v-if="getBeatSyllable(5)" x="94" y="310" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">{{ getBeatSyllable(5) }}</text>
+              <text v-if="getBeatSyllable(6)" x="50" y="204" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">{{ getBeatSyllable(6) }}</text>
+              <text v-if="getBeatSyllable(7)" x="94" y="98" text-anchor="middle" fill="#fff" font-size="10" font-weight="bold">{{ getBeatSyllable(7) }}</text>
+            </g>
+          </svg>
+          
+          <div class="circular-info">
+            <p>Pattern: {{ patternText || 'Empty' }}</p>
+            <p>8-beat circular layout</p>
+          </div>
+        </div>
       </div>
 
       <!-- Playback controls -->
@@ -196,6 +244,110 @@ const parsedSyllables = computed(() => {
   const result = parseSyllables(patternText.value)
   return result.syllables
 })
+
+const circularComposition = computed(() => {
+  // Ensure the part has all required fields for CircularRhythmVisualizer
+  const safePart = {
+    id: props.part.id || 'temp-part',
+    drumType: props.part.drumType || 'chu-daiko',
+    pattern: patternText.value || '',
+    volume: props.part.volume || 80
+  }
+  
+  return {
+    id: 'temp-composition',
+    title: 'Pattern Editor',
+    parts: [safePart],
+    tempo: tempo.value,
+    createdAt: new Date()
+  }
+})
+
+const simpleBeats = computed(() => {
+  const centerX = 200
+  const centerY = 200
+  const radius = 150
+  const numBeats = 8
+  const beats = []
+  
+  // Simple safe parsing
+  const text = patternText.value || ''
+  const parts = text.split(' ')
+  
+  for (let i = 0; i < numBeats; i++) {
+    const angle = (i / numBeats) * 2 * Math.PI - Math.PI / 2 // Start at top
+    const x = centerX + Math.cos(angle) * radius
+    const y = centerY + Math.sin(angle) * radius
+    
+    // Simple syllable extraction
+    let syllable = ''
+    if (text.includes('-')) {
+      // Positional pattern
+      syllable = parts[i] && parts[i] !== '-' ? parts[i] : ''
+    } else {
+      // Consecutive pattern
+      syllable = parts[i] || ''
+    }
+    
+    beats.push({
+      x,
+      y,
+      syllable,
+      beat: i + 1
+    })
+  }
+  
+  return beats
+})
+
+const setViewMode = (mode: 'text' | 'visual' | 'circular') => {
+  console.log('setViewMode called with:', mode)
+  console.log('Current viewMode before:', viewMode.value)
+  viewMode.value = mode
+  console.log('ViewMode after assignment:', viewMode.value)
+}
+
+const getBeatSyllable = (beatIndex: number) => {
+  const text = patternText.value || ''
+  const parts = text.split(' ')
+  
+  if (text.includes('-')) {
+    // Positional pattern
+    return parts[beatIndex] && parts[beatIndex] !== '-' ? parts[beatIndex] : ''
+  } else {
+    // Consecutive pattern
+    return parts[beatIndex] || ''
+  }
+}
+
+const getBeatFill = (beatIndex: number) => {
+  const syllable = getBeatSyllable(beatIndex)
+  return syllable ? '#ff6b6b' : '#333'
+}
+
+const onBeatClick = (beatIndex: number) => {
+  console.log('Beat clicked:', beatIndex)
+  
+  // Simple beat toggle for now
+  const text = patternText.value || ''
+  const parts = text.split(' ')
+  const maxBeats = 8
+  
+  // Ensure we have enough parts
+  while (parts.length < maxBeats) {
+    parts.push('-')
+  }
+  
+  // Toggle the beat
+  if (parts[beatIndex] && parts[beatIndex] !== '-') {
+    parts[beatIndex] = '-' // Remove syllable
+  } else {
+    parts[beatIndex] = 'don' // Add default syllable
+  }
+  
+  patternText.value = parts.join(' ')
+  handleTextInput()
+}
 
 const visualBeats = computed(() => {
   const maxBeats = 16

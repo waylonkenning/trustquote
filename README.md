@@ -12,13 +12,14 @@ This application provides a digital platform for creating and composing traditio
 - **Kuchi Shōga Notation System** - Complete syllable input and validation (don, ka, doko, tsu)
 - **Regional Style Support** - Standard, Kanto, and Kansai notation variations
 - **Pattern Input** - Text and visual notation modes with conversion
+- **Linear Grid Interface** - Interactive beat-by-beat pattern editing with visual feedback
+- **Circular Rhythm Visualization** - Polar coordinate beat cycle display with interactive editing
 - **Pronunciation Guide** - Interactive syllable reference with audio examples
 - **Settings Management** - Customizable notation preferences with localStorage
 - **Hand Sticking Notation** - R/L indicators for technique specification
 - **Audio Synthesis** - Web Audio API integration for syllable playback
 
 ### 🚧 In Development
-- **Circular Rhythm Visualization** - Polar coordinate beat cycle display
 - **Ensemble Coordination** - Multi-drum role management system
 - **Real-time Collaboration** - Multi-user composition sessions
 
