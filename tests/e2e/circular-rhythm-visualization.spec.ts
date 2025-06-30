@@ -16,6 +16,9 @@ test.describe('Circular Rhythm Visualization', () => {
   });
 
   test('should display circular rhythm visualizer', async ({ page }) => {
+    // First click on the pattern editor to ensure we're in the right context
+    await page.click('[data-testid="pattern-editor"]');
+    
     // Switch to circular visualization mode
     await page.click('[data-testid="view-circular"]');
     
@@ -29,11 +32,12 @@ test.describe('Circular Rhythm Visualization', () => {
   });
 
   test('should show beats arranged in circular pattern', async ({ page }) => {
-    await page.click('[data-testid="view-circular"]');
-    
-    // Input a pattern
+    // First click on the pattern editor and input a pattern
     await page.click('[data-testid="pattern-editor"]');
     await page.keyboard.type('don ka doko tsu don ka tsu don');
+    
+    // Then switch to circular view
+    await page.click('[data-testid="view-circular"]');
     
     // Check that beats are arranged in circle
     const beatMarkers = page.locator('[data-testid^="circular-beat-"]');

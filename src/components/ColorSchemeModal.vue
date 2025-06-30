@@ -56,7 +56,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-defineEmits<{
+const emit = defineEmits<{
   close: []
   'scheme-changed': [scheme: string]
 }>()

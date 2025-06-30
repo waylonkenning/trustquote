@@ -230,21 +230,39 @@ const applySuggestion = (suggestion: { name: string; pattern: string }) => {
 }
 
 const toggleBeat = (beatIndex: number) => {
-  // For visual mode, allow clicking beats to add/remove syllables
-  // This is a simplified implementation
-  const beats = visualBeats.value
-  if (beats[beatIndex].syllable) {
-    beats[beatIndex].syllable = ''
+  // Parse current pattern to get syllables in correct positions
+  const parsed = parseSyllables(patternText.value)
+  const maxBeats = 16
+  const beats: string[] = new Array(maxBeats).fill('')
+  
+  // Fill existing syllables
+  parsed.syllables.forEach(s => {
+    if (s.beat <= maxBeats) {
+      beats[s.beat - 1] = s.syllable
+    }
+  })
+  
+  // Toggle the clicked beat
+  if (beats[beatIndex]) {
+    beats[beatIndex] = '' // Remove syllable if present
   } else {
-    beats[beatIndex].syllable = 'don' // Default syllable
+    beats[beatIndex] = 'don' // Add default syllable
   }
   
-  // Convert back to text representation
-  const newPattern = beats
-    .map((beat, i) => beat.syllable ? `${beat.syllable}` : '')
-    .filter(s => s)
-    .join(' ')
+  // Convert back to text representation, maintaining beat positions
+  const syllablePositions: string[] = []
+  beats.forEach((syllable, index) => {
+    if (syllable) {
+      // Add spaces to maintain beat positions
+      while (syllablePositions.length < index) {
+        syllablePositions.push('')
+      }
+      syllablePositions.push(syllable)
+    }
+  })
   
+  // Create pattern with proper spacing
+  const newPattern = syllablePositions.join(' ').replace(/\s+/g, ' ').trim()
   patternText.value = newPattern
   handleTextInput()
 }
