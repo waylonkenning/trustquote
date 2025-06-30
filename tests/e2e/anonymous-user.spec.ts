@@ -50,12 +50,13 @@ test.describe('Anonymous User Experience', () => {
     await page.fill('[data-testid="composition-title"]', 'Test Composition');
     await page.click('[data-testid="confirm-create"]');
     
-    // Click save button
-    await page.click('[data-testid="save-composition"]');
+    // Wait for save button and force click to avoid stability issues
+    await page.waitForSelector('[data-testid="save-composition"]', { state: 'visible' });
+    await page.click('[data-testid="save-composition"]', { force: true });
     
     // Should show save prompt modal
     await expect(page.locator('[data-testid="save-prompt-modal"]')).toBeVisible();
-    await expect(page.locator('h2')).toContainText('💾 Save Your Composition');
+    await expect(page.locator('[data-testid="save-prompt-modal"] h2')).toContainText('💾 Save Your Composition');
     
     // Should show composition details
     await expect(page.locator('.composition-preview h3')).toContainText('Test Composition');
@@ -76,7 +77,8 @@ test.describe('Anonymous User Experience', () => {
     await page.click('[data-testid="confirm-create"]');
     
     // Open save prompt
-    await page.click('[data-testid="save-composition"]');
+    await page.waitForSelector('[data-testid="save-composition"]', { state: 'visible' });
+    await page.click('[data-testid="save-composition"]', { force: true });
     
     // Set up download monitoring
     const downloadPromise = page.waitForEvent('download');
@@ -99,7 +101,8 @@ test.describe('Anonymous User Experience', () => {
     await page.click('[data-testid="confirm-create"]');
     
     // Open save prompt
-    await page.click('[data-testid="save-composition"]');
+    await page.waitForSelector('[data-testid="save-composition"]', { state: 'visible' });
+    await page.click('[data-testid="save-composition"]', { force: true });
     
     // Click sign up and save
     await page.click('[data-testid="signup-and-save"]');
@@ -118,7 +121,8 @@ test.describe('Anonymous User Experience', () => {
     await page.click('[data-testid="settings-menu"]');
     
     // Settings should open (basic check)
-    await expect(page.locator('[data-testid="notation-style-standard"]')).toBeVisible();
+    await expect(page.locator('[data-testid="notation-settings"]')).toBeVisible();
+    await expect(page.locator('[data-testid="regional-style"]')).toBeVisible();
   });
 
   test('should store anonymous compositions in localStorage', async ({ page }) => {

@@ -7,15 +7,15 @@ export function useFreemium() {
   const currentGateFeature = ref<string>('')
   const gateContext = ref<Record<string, any>>({})
 
-  // Computed properties from subscription service
-  const isLoggedIn = computed(() => subscriptionService.isLoggedIn)
-  const isPremium = computed(() => subscriptionService.isPremium)
-  const isTrialing = computed(() => subscriptionService.isTrialing)
-  const isFree = computed(() => subscriptionService.isFree)
-  const currentUser = computed(() => subscriptionService.currentUser)
-  const subscription = computed(() => subscriptionService.subscription)
-  const usage = computed(() => subscriptionService.usage)
-  const limits = computed(() => subscriptionService.currentLimits)
+  // Direct references to subscription service computed properties
+  const isLoggedIn = subscriptionService.isLoggedIn
+  const isPremium = subscriptionService.isPremium
+  const isTrialing = subscriptionService.isTrialing
+  const isFree = subscriptionService.isFree
+  const currentUser = subscriptionService.currentUser
+  const subscription = subscriptionService.subscription
+  const usage = subscriptionService.usage
+  const limits = subscriptionService.currentLimits
 
   // Feature access methods
   const canAccessFeature = (featureId: string): boolean => {

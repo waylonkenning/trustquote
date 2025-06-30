@@ -19,6 +19,7 @@
               v-for="style in REGIONAL_STYLES"
               :key="style.code"
               :value="style.code"
+              :data-testid="`notation-style-${style.code}`"
             >
               {{ style.name }}
             </option>
