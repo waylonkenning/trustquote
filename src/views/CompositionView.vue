@@ -2,11 +2,67 @@
   <div class="composition-view">
     <header class="composition-header">
       <h1>Taiko Composer</h1>
+      
+      <!-- User Account Section -->
+      <div class="account-section">
+        <div v-if="!isLoggedIn" class="auth-buttons">
+          <button 
+            data-testid="sign-in-button"
+            @click="showSignIn = true"
+            class="btn-secondary"
+          >
+            Sign In
+          </button>
+          <button 
+            data-testid="sign-up-button"
+            @click="showSignUp = true"
+            class="btn-primary"
+          >
+            Sign Up
+          </button>
+        </div>
+        
+        <div v-else class="user-menu-container">
+          <!-- Usage Indicator -->
+          <div v-if="isFree" class="usage-indicator" data-testid="composition-usage">
+            <span class="usage-text">{{ usage.compositionsUsed }} / {{ usage.compositionsLimit }} compositions</span>
+            <div class="usage-bar" data-testid="composition-usage-bar">
+              <div 
+                class="usage-progress"
+                :style="{ width: `${usage.compositionsPercentage}%` }"
+                :class="{
+                  'warning': usage.isApproachingLimit,
+                  'danger': usage.hasReachedLimit
+                }"
+              ></div>
+            </div>
+          </div>
+          
+          <!-- Premium Status Indicator -->
+          <div v-if="isPremium" class="premium-indicator" data-testid="premium-status-indicator">
+            <span class="premium-badge">Premium</span>
+          </div>
+          
+          <div v-if="isTrialing" class="trial-indicator" data-testid="trial-status-indicator">
+            <span class="trial-badge">Free Trial</span>
+          </div>
+          
+          <!-- User Menu -->
+          <div class="user-menu" data-testid="user-menu">
+            <div class="user-avatar" data-testid="user-avatar">
+              {{ currentUser?.name?.[0]?.toUpperCase() || 'U' }}
+            </div>
+            <span class="user-name" data-testid="user-name">{{ currentUser?.name }}</span>
+          </div>
+        </div>
+      </div>
+      
       <div class="composition-actions">
         <button 
           data-testid="create-composition"
-          @click="showCreateDialog = true"
+          @click="handleCreateComposition"
           class="btn-primary"
+          :disabled="!canCreateComposition && isFree"
         >
           Create Composition
         </button>
@@ -36,6 +92,36 @@
         />
       </div>
     </main>
+
+    <!-- Composition Limit Warning -->
+    <div v-if="showCompositionLimit" class="modal-overlay" data-testid="composition-limit-warning" @click="showCompositionLimit = false">
+      <div class="modal limit-warning" @click.stop>
+        <h2>Composition Limit Reached</h2>
+        <p>You have reached the limit of {{ limits.maxCompositions }} compositions for free users.</p>
+        
+        <div class="upgrade-suggestion" data-testid="upgrade-suggestion">
+          <h3>Upgrade to Premium for:</h3>
+          <ul>
+            <li>✓ Unlimited compositions</li>
+            <li>✓ Multi-drum ensemble coordination</li>
+            <li>✓ Advanced features and export options</li>
+          </ul>
+        </div>
+        
+        <div class="modal-actions">
+          <button 
+            data-testid="upgrade-to-premium"
+            @click="handleUpgradeFromLimit"
+            class="btn-primary"
+          >
+            Upgrade to Premium
+          </button>
+          <button @click="showCompositionLimit = false" class="btn-secondary">
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Create Composition Dialog -->
     <div v-if="showCreateDialog" class="modal-overlay" @click="showCreateDialog = false">
@@ -73,8 +159,10 @@
               type="checkbox"
               v-model="enableEnsembleMode"
               class="checkbox"
+              :disabled="!canUseEnsemble"
             />
             Enable Ensemble Mode
+            <span v-if="!canUseEnsemble" class="premium-badge-inline">Premium</span>
             <span class="checkbox-description">
               Advanced coordination for multiple drum parts with role management
             </span>
@@ -101,31 +189,90 @@
       v-if="showSettings"
       @close="showSettings = false"
     />
+
+    <!-- Premium Gate -->
+    <PremiumGate
+      v-if="showPremiumGate"
+      :feature-id="currentGateFeature"
+      :context="gateContext"
+      @close="closePremiumGate"
+      @upgrade="handleUpgrade"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import KuchiShogaEditor from '@/components/KuchiShogaEditor.vue'
 import NotationSettings from '@/components/NotationSettings.vue'
+import PremiumGate from '@/components/PremiumGate.vue'
+import { useFreemium } from '@/composables/useFreemium'
 import type { Composition } from '@/types/composition'
 
+// Freemium composable
+const {
+  isLoggedIn,
+  isPremium,
+  isTrialing,
+  isFree,
+  currentUser,
+  usage,
+  limits,
+  canCreateComposition,
+  canAccessFeature,
+  checkCompositionLimit,
+  incrementCompositionCount,
+  showPremiumGate,
+  currentGateFeature,
+  gateContext,
+  closePremiumGate
+} = useFreemium()
+
+// Component state
 const showCreateDialog = ref(false)
 const showSettings = ref(false)
+const showCompositionLimit = ref(false)
+const showSignIn = ref(false)
+const showSignUp = ref(false)
 const newCompositionTitle = ref('')
 const newCompositionTempo = ref(120)
 const enableEnsembleMode = ref(false)
 const currentComposition = ref<Composition | null>(null)
 
+// Computed properties
+const canUseEnsemble = computed(() => canAccessFeature('ensemble-coordination'))
+
+// Methods
+const handleCreateComposition = () => {
+  if (checkCompositionLimit()) {
+    showCreateDialog.value = true
+  } else {
+    showCompositionLimit.value = true
+  }
+}
+
 const createComposition = () => {
+  // Double-check limits before creating
+  if (!checkCompositionLimit()) {
+    showCreateDialog.value = false
+    showCompositionLimit.value = true
+    return
+  }
+
   currentComposition.value = {
     id: Date.now().toString(),
     title: newCompositionTitle.value || 'Untitled Composition',
     parts: [],
     tempo: newCompositionTempo.value || 120,
     createdAt: new Date(),
-    isEnsemble: enableEnsembleMode.value
+    isEnsemble: enableEnsembleMode.value,
+    userId: currentUser.value?.id,
+    isPremiumFeature: enableEnsembleMode.value && !canUseEnsemble.value
   }
+  
+  // Increment composition count for usage tracking
+  incrementCompositionCount()
+  
   closeCreateDialog()
 }
 
@@ -134,6 +281,17 @@ const closeCreateDialog = () => {
   newCompositionTempo.value = 120
   enableEnsembleMode.value = false
   showCreateDialog.value = false
+}
+
+const handleUpgradeFromLimit = () => {
+  showCompositionLimit.value = false
+  // Redirect to pricing or trigger upgrade flow
+  window.location.href = '/pricing'
+}
+
+const handleUpgrade = () => {
+  // Redirect to pricing or trigger upgrade flow
+  window.location.href = '/pricing'
 }
 
 const updatePattern = (partId: string, pattern: string) => {
@@ -184,6 +342,7 @@ const getDefaultVolume = (drumType: string) => {
   padding: 1rem 2rem;
   background: #2a2a2a;
   border-bottom: 1px solid #404040;
+  gap: 2rem;
 }
 
 .composition-header h1 {
@@ -304,5 +463,194 @@ const getDefaultVolume = (drumType: string) => {
   color: #cccccc;
   font-weight: normal;
   margin-top: 0.25rem;
+}
+
+/* Freemium Features */
+.account-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.auth-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.user-menu-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.usage-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.usage-text {
+  font-size: 0.75rem;
+  color: #cccccc;
+  white-space: nowrap;
+}
+
+.usage-bar {
+  width: 80px;
+  height: 4px;
+  background: #404040;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.usage-progress {
+  height: 100%;
+  background: #6366f1;
+  transition: width 0.3s ease;
+}
+
+.usage-progress.warning {
+  background: #f59e0b;
+}
+
+.usage-progress.danger {
+  background: #ef4444;
+}
+
+.premium-indicator,
+.trial-indicator {
+  display: flex;
+  align-items: center;
+}
+
+.premium-badge {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.trial-badge {
+  background: #10b981;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.user-menu:hover {
+  background: #404040;
+}
+
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  background: #6366f1;
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.user-name {
+  color: #ffffff;
+  font-weight: 500;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.premium-badge-inline {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 8px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 0.5rem;
+}
+
+.limit-warning {
+  border: 2px solid #f59e0b;
+}
+
+.limit-warning h2 {
+  color: #f59e0b;
+}
+
+.upgrade-suggestion {
+  background: #1f1f1f;
+  padding: 1rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+}
+
+.upgrade-suggestion h3 {
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.upgrade-suggestion ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.upgrade-suggestion li {
+  color: #10b981;
+  padding: 0.25rem 0;
+  font-size: 0.875rem;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .composition-header {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+  
+  .account-section {
+    order: -1;
+    width: 100%;
+  }
+  
+  .user-menu-container {
+    justify-content: space-between;
+    width: 100%;
+  }
+  
+  .usage-indicator {
+    align-items: flex-start;
+  }
+  
+  .user-name {
+    max-width: none;
+  }
 }
 </style>

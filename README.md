@@ -33,18 +33,38 @@ This application provides a digital platform for creating and composing traditio
   - Audio feedback for pattern editing and beat interaction
   - Pitch adjustment and playback rate controls
   - Real-time audio context management and browser compatibility
+- **Freemium Business Model** - Complete subscription and payment system
+  - Free tier with 3 composition limit and basic features
+  - Premium tier with unlimited access and advanced features
+  - Feature gating system with premium upgrade prompts
+  - Usage tracking and analytics
+  - Subscription state management with localStorage persistence
+- **Mock Stripe Integration** - Full payment processing simulation
+  - Professional checkout flow with billing forms
+  - Free trial management (14-day trials)
+  - Payment success/failure handling
+  - Subscription lifecycle management (cancel, upgrade, retry)
+  - Invoice generation and billing history
+  - Tax calculation by region
+  - Comprehensive pricing page with feature comparison
 
 ### 🚧 In Development
-- **Real-time Collaboration** - Multi-user composition sessions
+- **User Authentication System** - Sign up, login, and account management
+- **Landing Page** - Marketing page with feature showcase and conversion optimization
 
 ### 📋 Planned
+- **Subscription Management** - Account dashboard for billing and plan changes
+- **Feature Implementation** - Complete integration of premium features with existing components
+- **Usage Analytics** - Advanced tracking and insights
+- **Real-time Collaboration** - Multi-user composition sessions
 - Traditional jo-ha-kyū form structure
 - Pattern library with named tetsuke patterns
 - Polyrhythmic analysis tools
 - Tempo transition controls
 - AI-powered pattern recognition
 - Choreography integration
-- Export capabilities
+- Export capabilities (MIDI, audio, sheet music)
+- Real Stripe integration (replacing mock)
 
 ## Live Demo
 
@@ -93,14 +113,53 @@ npm run test:e2e:ui
 - **Frontend**: Vue 3, TypeScript, Vite
 - **State Management**: Pinia
 - **Routing**: Vue Router
+- **Payments**: Mock Stripe integration (ready for production Stripe)
+- **Authentication**: Mock auth system (ready for real auth provider)
 - **Testing**: Vitest, Playwright
 - **Build Tool**: Vite
+- **Deployment**: Vercel
 
 ## Project Structure
 
 - `/src` - Source code
+  - `/components` - Vue components including premium gates and pricing
+  - `/composables` - Vue composables for freemium and subscription logic
+  - `/services` - Business logic services (subscription, stripe, audio)
+  - `/types` - TypeScript type definitions
+  - `/views` - Page components (composition, pricing, checkout, success)
 - `/tests` - Test files
+  - `/e2e` - Playwright end-to-end tests for freemium and payment flows
 - `/public` - Static assets
+
+## Freemium Model
+
+### Free Tier
+- ✅ Basic kuchi shōga notation (don, ka, doko, tsu)
+- ✅ Single drum compositions
+- ✅ Linear grid interface
+- ✅ Basic audio playback
+- ✅ Pronunciation guide
+- ✅ Up to 3 saved compositions
+
+### Premium Tier ($9.99/month)
+- ✅ Everything in free tier
+- ✅ Unlimited compositions
+- ✅ Multi-drum ensemble coordination
+- ✅ Circular rhythm visualization
+- ✅ Regional style variations (Kanto, Kansai)
+- ✅ Export capabilities (MIDI, audio, sheet music)
+- 🚧 Real-time collaboration
+- 📋 Pattern library access
+- 📋 AI-powered composition suggestions
+- 📋 Advanced audio features
+
+### Payment System
+- ✅ 14-day free trial
+- ✅ Professional checkout flow
+- ✅ Subscription management
+- ✅ Usage tracking and limits
+- ✅ Premium feature gates
+- ✅ Billing and invoice management
 
 ## Contributing
 

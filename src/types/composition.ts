@@ -5,6 +5,8 @@ export interface Composition {
   tempo: number
   createdAt: Date
   isEnsemble?: boolean
+  userId?: string
+  isPremiumFeature?: boolean
 }
 
 export interface CompositionPart {
