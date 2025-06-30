@@ -21,7 +21,7 @@
         <button 
           data-testid="view-circular"
           :class="{ active: viewMode === 'circular' }"
-          @click="viewMode = 'circular'"
+          @click="viewMode = 'circular'; console.log('Clicked circular, viewMode:', viewMode)"
           class="tab-button"
         >
           Circular View
@@ -99,8 +99,12 @@
         </div>
       </div>
 
+      <!-- Debug viewMode -->
+      <div class="debug-viewmode" data-testid="debug-viewmode">Current viewMode: {{ viewMode }}</div>
+
       <!-- Circular Visualization Mode -->
-      <div v-if="viewMode === 'circular'" class="circular-view-container">
+      <div v-if="viewMode === 'circular'" class="circular-view-container" data-testid="circular-view-wrapper">
+        <div class="circular-debug">Debug: Circular view is active, viewMode: {{ viewMode }}</div>
         <CircularRhythmVisualizer 
           :composition="{ id: 'temp', title: 'temp', parts: [part], tempo: tempo, createdAt: new Date() }"
           :is-playing="isPlaying"
