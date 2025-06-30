@@ -16,7 +16,15 @@
           @click="viewMode = 'visual'"
           class="tab-button"
         >
-          Visual Notation
+          Linear Grid
+        </button>
+        <button 
+          data-testid="view-circular"
+          :class="{ active: viewMode === 'circular' }"
+          @click="viewMode = 'circular'"
+          class="tab-button"
+        >
+          Circular View
         </button>
       </div>
 
@@ -91,6 +99,17 @@
         </div>
       </div>
 
+      <!-- Circular Visualization Mode -->
+      <div v-if="viewMode === 'circular'" class="circular-view-container">
+        <CircularRhythmVisualizer 
+          :composition="{ id: 'temp', title: 'temp', parts: [part], tempo: tempo, createdAt: new Date() }"
+          :is-playing="isPlaying"
+          :current-beat="0"
+          :tempo="tempo"
+          @beat-updated="handleCircularBeatUpdate"
+        />
+      </div>
+
       <!-- Playback controls -->
       <div class="playback-controls">
         <button 
@@ -137,6 +156,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import { useKuchiShoga } from '@/composables/useKuchiShoga'
+import CircularRhythmVisualizer from './CircularRhythmVisualizer.vue'
 import type { CompositionPart } from '@/types/composition'
 
 interface Props {
@@ -157,7 +177,7 @@ const {
   stopAudio
 } = useKuchiShoga()
 
-const viewMode = ref<'text' | 'visual'>('text')
+const viewMode = ref<'text' | 'visual' | 'circular'>('text')
 const patternText = ref(props.part.pattern || '')
 const validationError = ref('')
 const showAutocomplete = ref(false)
@@ -244,6 +264,27 @@ const togglePlayback = async () => {
 const stopPlayback = () => {
   isPlaying.value = false
   stopAudio()
+}
+
+const handleCircularBeatUpdate = (partId: string, beatIndex: number, syllable: string) => {
+  // Convert beat update back to text pattern
+  const beats = new Array(16).fill('')
+  const currentParsed = parseSyllables(patternText.value)
+  
+  // Preserve existing syllables
+  currentParsed.syllables.forEach(s => {
+    if (s.beat <= 16) {
+      beats[s.beat - 1] = s.syllable
+    }
+  })
+  
+  // Update the specific beat
+  beats[beatIndex] = syllable
+  
+  // Convert back to text
+  const newPattern = beats.filter(s => s).join(' ')
+  patternText.value = newPattern
+  handleTextInput()
 }
 
 // Watch for external pattern changes
@@ -431,6 +472,11 @@ watch(() => props.part.pattern, (newPattern) => {
 .beat-syllable {
   font-weight: bold;
   margin-top: 0.25rem;
+}
+
+.circular-view-container {
+  min-height: 500px;
+  padding: 1rem;
 }
 
 .playback-controls {
