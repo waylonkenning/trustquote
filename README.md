@@ -8,10 +8,32 @@ This application provides a digital platform for creating and composing traditio
 
 ## Features
 
-- Interactive taiko composition interface
-- Kuchi shōga notation support
-- Vue.js frontend with TypeScript
-- Comprehensive E2E testing with Playwright
+### ✅ Implemented
+- **Kuchi Shōga Notation System** - Complete syllable input and validation (don, ka, doko, tsu)
+- **Regional Style Support** - Standard, Kanto, and Kansai notation variations
+- **Pattern Input** - Text and visual notation modes with conversion
+- **Pronunciation Guide** - Interactive syllable reference with audio examples
+- **Settings Management** - Customizable notation preferences with localStorage
+- **Hand Sticking Notation** - R/L indicators for technique specification
+- **Audio Synthesis** - Web Audio API integration for syllable playback
+
+### 🚧 In Development
+- **Circular Rhythm Visualization** - Polar coordinate beat cycle display
+- **Ensemble Coordination** - Multi-drum role management system
+- **Real-time Collaboration** - Multi-user composition sessions
+
+### 📋 Planned
+- Traditional jo-ha-kyū form structure
+- Pattern library with named tetsuke patterns
+- Polyrhythmic analysis tools
+- Tempo transition controls
+- AI-powered pattern recognition
+- Choreography integration
+- Export capabilities
+
+## Live Demo
+
+🎵 **[Try it live at trustquote.vercel.app](https://trustquote.vercel.app)**
 
 ## Getting Started
 
