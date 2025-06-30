@@ -192,12 +192,19 @@ const parsedSyllables = computed(() => {
 })
 
 const visualBeats = computed(() => {
-  const beats = new Array(16).fill(null).map((_, i) => ({ syllable: '', beat: i + 1 }))
-  parsedSyllables.value.forEach(syllable => {
-    if (syllable.beat <= 16) {
-      beats[syllable.beat - 1].syllable = syllable.syllable
+  const maxBeats = 16
+  const beats = new Array(maxBeats).fill(null).map((_, i) => ({ syllable: '', beat: i + 1 }))
+  
+  // For visual mode, parse the pattern as positional beats
+  if (patternText.value.trim()) {
+    const parts = patternText.value.split(' ')
+    for (let i = 0; i < Math.min(parts.length, maxBeats); i++) {
+      if (parts[i] && parts[i].trim()) {
+        beats[i].syllable = parts[i].trim()
+      }
     }
-  })
+  }
+  
   return beats
 })
 
@@ -230,40 +237,47 @@ const applySuggestion = (suggestion: { name: string; pattern: string }) => {
 }
 
 const toggleBeat = (beatIndex: number) => {
-  // Parse current pattern to get syllables in correct positions
-  const parsed = parseSyllables(patternText.value)
+  // For visual mode, we need to work with positional beats directly
+  // Current approach: treat the pattern as a sequence of space-separated positions
+  
+  // Convert current pattern to a fixed-length array
   const maxBeats = 16
-  const beats: string[] = new Array(maxBeats).fill('')
+  const beatArray: string[] = new Array(maxBeats).fill('')
   
-  // Fill existing syllables
-  parsed.syllables.forEach(s => {
-    if (s.beat <= maxBeats) {
-      beats[s.beat - 1] = s.syllable
+  // If we have existing text, try to parse it positionally
+  if (patternText.value.trim()) {
+    // Split by spaces but preserve empty positions
+    const parts = patternText.value.split(' ')
+    for (let i = 0; i < Math.min(parts.length, maxBeats); i++) {
+      if (parts[i] && parts[i].trim()) {
+        beatArray[i] = parts[i].trim()
+      }
     }
-  })
-  
-  // Toggle the clicked beat
-  if (beats[beatIndex]) {
-    beats[beatIndex] = '' // Remove syllable if present
-  } else {
-    beats[beatIndex] = 'don' // Add default syllable
   }
   
-  // Convert back to text representation, maintaining beat positions
-  const syllablePositions: string[] = []
-  beats.forEach((syllable, index) => {
-    if (syllable) {
-      // Add spaces to maintain beat positions
-      while (syllablePositions.length < index) {
-        syllablePositions.push('')
-      }
-      syllablePositions.push(syllable)
-    }
-  })
+  // Toggle the clicked beat
+  if (beatArray[beatIndex]) {
+    beatArray[beatIndex] = '' // Remove syllable if present
+  } else {
+    beatArray[beatIndex] = 'don' // Add default syllable
+  }
   
-  // Create pattern with proper spacing
-  const newPattern = syllablePositions.join(' ').replace(/\s+/g, ' ').trim()
-  patternText.value = newPattern
+  // Convert back to text, preserving only the filled positions
+  // but maintaining relative spacing
+  const activeBeatPositions = []
+  for (let i = 0; i < maxBeats; i++) {
+    if (beatArray[i]) {
+      activeBeatPositions.push({ pos: i, syllable: beatArray[i] })
+    }
+  }
+  
+  if (activeBeatPositions.length === 0) {
+    patternText.value = ''
+  } else {
+    // Create a compact representation: just the syllables in order
+    patternText.value = activeBeatPositions.map(beat => beat.syllable).join(' ')
+  }
+  
   handleTextInput()
 }
 
