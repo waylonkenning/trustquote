@@ -24,7 +24,11 @@ class SubscriptionService {
   // Computed properties
   readonly currentUser = computed(() => this.user.value)
   readonly subscription = computed(() => this.user.value?.subscription)
-  readonly isLoggedIn = computed(() => !!this.user.value)
+  readonly isLoggedIn = computed(() => {
+    const hasUser = !!this.user.value
+    const hasToken = !!localStorage.getItem('auth_token')
+    return hasUser && hasToken
+  })
   readonly isPremium = computed(() => 
     this.subscription.value?.plan === 'premium' && 
     this.subscription.value?.status === 'active'
@@ -281,6 +285,9 @@ class SubscriptionService {
     const userData = localStorage.getItem('user_data')
     const authToken = localStorage.getItem('auth_token')
     
+    console.log('SubscriptionService init:', { hasUserData: !!userData, hasAuthToken: !!authToken })
+    
+    // Only restore user if both data and token exist
     if (userData && authToken) {
       try {
         const user = JSON.parse(userData)
@@ -288,10 +295,16 @@ class SubscriptionService {
           ...user,
           createdAt: new Date(user.createdAt)
         })
+        console.log('User restored from storage:', user.email)
       } catch (error) {
         console.error('Failed to restore user data:', error)
         this.clearPersistedData()
       }
+    } else {
+      // Clear any partial data and ensure clean state
+      this.clearPersistedData()
+      this.user.value = null
+      console.log('No valid auth data found, staying anonymous')
     }
   }
 }
@@ -300,3 +313,8 @@ export const subscriptionService = new SubscriptionService()
 
 // Auto-initialize
 subscriptionService.init()
+
+// Make available globally for debugging
+if (typeof window !== 'undefined') {
+  (window as any).subscriptionService = subscriptionService
+}

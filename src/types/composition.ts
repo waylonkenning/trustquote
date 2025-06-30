@@ -7,6 +7,8 @@ export interface Composition {
   isEnsemble?: boolean
   userId?: string
   isPremiumFeature?: boolean
+  isAnonymous?: boolean
+  patterns?: string[]
 }
 
 export interface CompositionPart {

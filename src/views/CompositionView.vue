@@ -5,21 +5,27 @@
       
       <!-- User Account Section -->
       <div class="account-section">
-        <div v-if="!isLoggedIn" class="auth-buttons">
-          <button 
-            data-testid="sign-in-button"
-            @click="showSignIn = true"
-            class="btn-secondary"
-          >
-            Sign In
-          </button>
-          <button 
-            data-testid="sign-up-button"
-            @click="showSignUp = true"
-            class="btn-primary"
-          >
-            Sign Up
-          </button>
+        <div v-if="!isLoggedIn" class="anonymous-user-info">
+          <div class="anonymous-status">
+            <span class="anonymous-badge">Guest Mode</span>
+            <span class="anonymous-note">Sign up to save your work</span>
+          </div>
+          <div class="auth-buttons">
+            <button 
+              data-testid="sign-in-button"
+              @click="showSignIn = true"
+              class="btn-secondary small"
+            >
+              Sign In
+            </button>
+            <button 
+              data-testid="sign-up-button"
+              @click="showSignUp = true"
+              class="btn-primary small"
+            >
+              Sign Up
+            </button>
+          </div>
         </div>
         
         <div v-else class="user-menu-container">
@@ -62,10 +68,29 @@
           data-testid="create-composition"
           @click="handleCreateComposition"
           class="btn-primary"
-          :disabled="!canCreateComposition && isFree"
+          :disabled="isLoggedIn && !canCreateComposition && isFree"
         >
-          Create Composition
+          {{ currentComposition ? 'New Composition' : 'Create Composition' }}
         </button>
+        
+        <button 
+          v-if="currentComposition && !isLoggedIn"
+          data-testid="save-composition"
+          @click="promptToSave"
+          class="btn-primary save-prompt"
+        >
+          💾 Save Your Work
+        </button>
+        
+        <button 
+          v-if="currentComposition && isLoggedIn"
+          data-testid="save-composition"
+          @click="saveComposition"
+          class="btn-secondary"
+        >
+          Save
+        </button>
+        
         <button 
           data-testid="settings-menu"
           @click="showSettings = true"
@@ -126,14 +151,14 @@
     <!-- Create Composition Dialog -->
     <div v-if="showCreateDialog" class="modal-overlay" @click="showCreateDialog = false">
       <div class="modal" @click.stop>
-        <h2>Create New Composition</h2>
+        <h2>{{ currentComposition ? 'Create New Composition' : 'Create Your First Composition' }}</h2>
         <div class="form-group">
           <label for="composition-title">Title</label>
           <input 
             id="composition-title"
             data-testid="composition-title"
             v-model="newCompositionTitle"
-            placeholder="Composition Title"
+            placeholder="My Taiko Piece"
             class="input"
           />
         </div>
@@ -169,16 +194,71 @@
           </label>
         </div>
         
+        <div v-if="!isLoggedIn" class="guest-mode-notice">
+          <p>🎯 <strong>Guest Mode:</strong> Your composition will be saved locally. Sign up to save permanently and access all features!</p>
+        </div>
+        
         <div class="modal-actions">
           <button 
             data-testid="confirm-create"
             @click="createComposition"
             class="btn-primary"
           >
-            Create
+            {{ isLoggedIn ? 'Create' : 'Start Composing' }}
           </button>
           <button @click="closeCreateDialog" class="btn-secondary">
             Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Save Prompt Modal for Anonymous Users -->
+    <div v-if="showSavePrompt" class="modal-overlay" data-testid="save-prompt-modal" @click="showSavePrompt = false">
+      <div class="modal save-prompt-modal" @click.stop>
+        <div class="save-prompt-header">
+          <h2>💾 Save Your Composition</h2>
+          <p>Don't lose your creative work! Sign up to save permanently.</p>
+        </div>
+        
+        <div class="composition-preview">
+          <h3>{{ currentComposition?.title || 'Untitled Composition' }}</h3>
+          <div class="composition-stats">
+            <span>{{ compositionStats.patterns }} patterns</span>
+            <span>{{ compositionStats.duration }} duration</span>
+            <span>{{ currentComposition?.tempo || 120 }} BPM</span>
+          </div>
+        </div>
+        
+        <div class="save-options">
+          <div class="save-option primary-option">
+            <h4>🚀 Sign Up & Save Forever</h4>
+            <p>Keep your compositions safe and access premium features</p>
+            <button 
+              data-testid="signup-and-save"
+              @click="signUpAndSave"
+              class="btn-primary"
+            >
+              Sign Up & Save
+            </button>
+          </div>
+          
+          <div class="save-option">
+            <h4>📥 Download for Now</h4>
+            <p>Save locally (you'll need to re-import later)</p>
+            <button 
+              data-testid="download-composition"
+              @click="downloadComposition"
+              class="btn-secondary"
+            >
+              Download JSON
+            </button>
+          </div>
+        </div>
+        
+        <div class="modal-actions">
+          <button @click="showSavePrompt = false" class="btn-tertiary">
+            Continue Without Saving
           </button>
         </div>
       </div>
@@ -198,15 +278,32 @@
       @close="closePremiumGate"
       @upgrade="handleUpgrade"
     />
+
+    <!-- Authentication Modals -->
+    <LoginModal 
+      v-if="showSignIn" 
+      @close="showSignIn = false"
+      @showSignup="showSignIn = false; showSignUp = true"
+      @loginSuccess="handleAuthSuccess"
+    />
+    
+    <SignupModal 
+      v-if="showSignUp" 
+      @close="showSignUp = false"
+      @showLogin="showSignUp = false; showSignIn = true"
+      @registrationSuccess="handleAuthSuccess"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
 import KuchiShogaEditor from '@/components/KuchiShogaEditor.vue'
 import NotationSettings from '@/components/NotationSettings.vue'
 import PremiumGate from '@/components/PremiumGate.vue'
+import LoginModal from '@/components/LoginModal.vue'
+import SignupModal from '@/components/SignupModal.vue'
 import { useFreemium } from '@/composables/useFreemium'
 import type { Composition } from '@/types/composition'
 
@@ -237,16 +334,54 @@ const showSettings = ref(false)
 const showCompositionLimit = ref(false)
 const showSignIn = ref(false)
 const showSignUp = ref(false)
+const showSavePrompt = ref(false)
 const newCompositionTitle = ref('')
 const newCompositionTempo = ref(120)
 const enableEnsembleMode = ref(false)
 const currentComposition = ref<Composition | null>(null)
 
+// Debug logging
+watchEffect(() => {
+  console.log('CompositionView state:', {
+    isLoggedIn: isLoggedIn.value,
+    currentUser: currentUser.value,
+    hasAuthToken: !!localStorage.getItem('auth_token'),
+    hasUserData: !!localStorage.getItem('user_data')
+  })
+})
+
 // Computed properties
 const canUseEnsemble = computed(() => canAccessFeature('ensemble-coordination'))
 
+const compositionStats = computed(() => {
+  if (!currentComposition.value) return { patterns: 0, duration: '0s' }
+  
+  const patternCount = currentComposition.value.parts.reduce((count, part) => 
+    count + (part.patterns?.length || 0), 0
+  )
+  
+  // Rough duration calculation based on tempo and pattern length
+  const avgPatternLength = 8 // assume 8 beats per pattern
+  const beatsPerSecond = (currentComposition.value.tempo || 120) / 60
+  const durationSeconds = Math.round((patternCount * avgPatternLength) / beatsPerSecond)
+  
+  return {
+    patterns: patternCount,
+    duration: durationSeconds > 60 
+      ? `${Math.floor(durationSeconds / 60)}m ${durationSeconds % 60}s`
+      : `${durationSeconds}s`
+  }
+})
+
 // Methods
 const handleCreateComposition = () => {
+  // Anonymous users can always create (stored locally)
+  if (!isLoggedIn.value) {
+    showCreateDialog.value = true
+    return
+  }
+  
+  // Logged in users need to check limits
   if (checkCompositionLimit()) {
     showCreateDialog.value = true
   } else {
@@ -255,8 +390,8 @@ const handleCreateComposition = () => {
 }
 
 const createComposition = () => {
-  // Double-check limits before creating
-  if (!checkCompositionLimit()) {
+  // For logged in users, check limits
+  if (isLoggedIn.value && !checkCompositionLimit()) {
     showCreateDialog.value = false
     showCompositionLimit.value = true
     return
@@ -264,17 +399,23 @@ const createComposition = () => {
 
   currentComposition.value = {
     id: Date.now().toString(),
-    title: newCompositionTitle.value || 'Untitled Composition',
+    title: newCompositionTitle.value || 'My Taiko Piece',
     parts: [],
     tempo: newCompositionTempo.value || 120,
     createdAt: new Date(),
     isEnsemble: enableEnsembleMode.value,
     userId: currentUser.value?.id,
-    isPremiumFeature: enableEnsembleMode.value && !canUseEnsemble.value
+    isPremiumFeature: enableEnsembleMode.value && !canUseEnsemble.value,
+    isAnonymous: !isLoggedIn.value
   }
   
-  // Increment composition count for usage tracking
-  incrementCompositionCount()
+  // Save to localStorage for anonymous users
+  if (!isLoggedIn.value) {
+    saveToLocalStorage()
+  } else {
+    // Increment composition count for usage tracking (logged in users only)
+    incrementCompositionCount()
+  }
   
   closeCreateDialog()
 }
@@ -295,11 +436,64 @@ const handleUpgrade = () => {
   router.push('/pricing')
 }
 
+// Anonymous user methods
+const promptToSave = () => {
+  showSavePrompt.value = true
+}
+
+const signUpAndSave = () => {
+  // Store composition data for after signup
+  if (currentComposition.value) {
+    localStorage.setItem('pending_composition', JSON.stringify(currentComposition.value))
+  }
+  showSavePrompt.value = false
+  router.push('/signup?save=true')
+}
+
+const downloadComposition = () => {
+  if (!currentComposition.value) return
+  
+  const dataStr = JSON.stringify(currentComposition.value, null, 2)
+  const dataBlob = new Blob([dataStr], { type: 'application/json' })
+  const url = URL.createObjectURL(dataBlob)
+  
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${currentComposition.value.title}.json`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  
+  URL.revokeObjectURL(url)
+  showSavePrompt.value = false
+}
+
+const saveComposition = () => {
+  if (!currentComposition.value || !isLoggedIn.value) return
+  
+  // Save to backend (implementation depends on your backend)
+  console.log('Saving composition:', currentComposition.value)
+  // TODO: Implement actual save to backend
+}
+
+const saveToLocalStorage = () => {
+  if (!currentComposition.value) return
+  
+  const existingCompositions = JSON.parse(localStorage.getItem('anonymous_compositions') || '[]')
+  const updatedCompositions = [currentComposition.value, ...existingCompositions.slice(0, 4)] // Keep max 5
+  localStorage.setItem('anonymous_compositions', JSON.stringify(updatedCompositions))
+}
+
 const updatePattern = (partId: string, pattern: string) => {
   if (currentComposition.value) {
     const part = currentComposition.value.parts.find(p => p.id === partId)
     if (part) {
       part.pattern = pattern
+    }
+    
+    // Auto-save for anonymous users
+    if (!isLoggedIn.value) {
+      saveToLocalStorage()
     }
   }
 }
@@ -317,6 +511,33 @@ const addPart = (drumType: string, role?: string) => {
       isManuallyMuted: false
     }
     currentComposition.value.parts.push(newPart)
+    
+    // Auto-save for anonymous users
+    if (!isLoggedIn.value) {
+      saveToLocalStorage()
+    }
+  }
+}
+
+const handleAuthSuccess = (user: any) => {
+  showSignIn.value = false
+  showSignUp.value = false
+  
+  // Check if there's a pending composition to save
+  const pendingComposition = localStorage.getItem('pending_composition')
+  if (pendingComposition) {
+    try {
+      const composition = JSON.parse(pendingComposition)
+      composition.userId = user.id
+      composition.isAnonymous = false
+      currentComposition.value = composition
+      
+      // Save to backend and remove from localStorage
+      saveComposition()
+      localStorage.removeItem('pending_composition')
+    } catch (error) {
+      console.error('Failed to restore pending composition:', error)
+    }
   }
 }
 
@@ -652,6 +873,189 @@ const getDefaultVolume = (drumType: string) => {
   
   .user-name {
     max-width: none;
+  }
+}
+
+/* Anonymous User Styles */
+.anonymous-user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.anonymous-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.25rem;
+}
+
+.anonymous-badge {
+  background: #374151;
+  color: #d1d5db;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.anonymous-note {
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.auth-buttons {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-secondary.small,
+.btn-primary.small {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+}
+
+.save-prompt {
+  animation: pulse 2s infinite;
+  background: linear-gradient(135deg, #10b981, #059669) !important;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* Guest Mode Notice */
+.guest-mode-notice {
+  background: #fef3c7;
+  border: 1px solid #f59e0b;
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+}
+
+.guest-mode-notice p {
+  color: #92400e;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+/* Save Prompt Modal */
+.save-prompt-modal {
+  max-width: 500px;
+  width: 90%;
+}
+
+.save-prompt-header {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.save-prompt-header h2 {
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  font-size: 1.5rem;
+}
+
+.save-prompt-header p {
+  color: #9ca3af;
+  margin: 0;
+}
+
+.composition-preview {
+  background: #1f2937;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  text-align: center;
+}
+
+.composition-preview h3 {
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  font-size: 1.125rem;
+}
+
+.composition-stats {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.composition-stats span {
+  color: #6b7280;
+  font-size: 0.875rem;
+  background: #374151;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.save-options {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.save-option {
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.save-option.primary-option {
+  border-color: #6366f1;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+}
+
+.save-option h4 {
+  color: #ffffff;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.save-option p {
+  color: #9ca3af;
+  margin-bottom: 1rem;
+  font-size: 0.875rem;
+}
+
+.btn-tertiary {
+  background: transparent;
+  color: #6b7280;
+  border: none;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.btn-tertiary:hover {
+  color: #9ca3af;
+}
+
+@media (max-width: 768px) {
+  .anonymous-user-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+  
+  .save-prompt-modal {
+    margin: 1rem;
+    max-width: none;
+  }
+  
+  .composition-stats {
+    gap: 0.5rem;
+  }
+  
+  .save-options {
+    gap: 0.75rem;
   }
 }
 </style>

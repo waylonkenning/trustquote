@@ -85,9 +85,25 @@ This application provides a digital platform for creating and composing traditio
   - Account deletion with multi-step confirmation
   - Trial status tracking with upgrade prompts
   - Comprehensive subscription management interface
+- **Anonymous User Experience** - Friction-free "try before you buy" approach
+  - Immediate composition access without registration
+  - Guest mode with clear status indicators
+  - Auto-save to localStorage for session persistence
+  - Smart save system with dual options (signup vs download)
+  - Seamless transition from anonymous to authenticated state
+  - Contextual upgrade prompts and premium feature gates
+  - JSON export for local backup and sharing
+- **Comprehensive E2E Testing** - Full test coverage for user journeys
+  - Anonymous user flows and composition creation
+  - Authentication system and modal interactions
+  - Feature gating and premium restrictions
+  - Freemium model and subscription workflows
+  - Stripe payment processing and billing
+  - Landing page conversion funnels
+  - Error handling and edge cases
 
 ### 🚧 In Development
-- **Feature Gating System** - Restrict premium features for free users
+- **Feature Gating System** - Complete premium feature restrictions (95% complete)
 - **Usage Tracking** - Real-time limits for free tier users
 
 ### 📋 Planned
@@ -144,16 +160,46 @@ npm run test:e2e
 npm run test:e2e:ui
 ```
 
+## User Experience Design
+
+### Anonymous-First Approach
+The application implements a "try before you buy" philosophy:
+
+1. **Immediate Access**: Users can start composing without any barriers
+2. **Progressive Enhancement**: Features unlock as users engage more deeply
+3. **Smart Conversion**: Contextual prompts encourage registration at optimal moments
+4. **Data Preservation**: Work is never lost during the signup process
+
+### User Journey
+```
+Anonymous User → Create Composition → Try to Save → Sign Up & Save Forever
+                                                 ↘ Download JSON (alternative)
+```
+
+### Authentication States
+- **Anonymous**: Guest mode with localStorage persistence
+- **Free**: Registered with cloud sync and composition limits
+- **Premium**: Full feature access with unlimited usage
+
 ## Tech Stack
 
 - **Frontend**: Vue 3, TypeScript, Vite
-- **State Management**: Pinia
-- **Routing**: Vue Router
-- **Payments**: Mock Stripe integration (ready for production Stripe)
-- **Authentication**: Complete auth system with social login (ready for real auth provider)
-- **Testing**: Vitest, Playwright
+- **State Management**: Pinia + Reactive Services
+- **Routing**: Vue Router with modal-based auth
+- **Testing**: Playwright E2E + Comprehensive test coverage
+- **Payments**: Mock Stripe integration (production-ready)
+- **Authentication**: Complete auth system with social login
+- **Storage**: localStorage + Cloud sync hybrid approach
 - **Build Tool**: Vite
 - **Deployment**: Vercel
+
+### Test Coverage
+- `anonymous-user.spec.ts` - Anonymous user flows and composition creation
+- `feature-gating.spec.ts` - Premium restrictions and upgrade flows
+- `freemium-model.spec.ts` - Subscription tiers and usage limits  
+- `stripe-payments.spec.ts` - Payment processing and billing
+- `user-authentication.spec.ts` - Auth system and modal interactions
+- `landing-page.spec.ts` - Marketing page and conversion funnels
 
 ## Project Structure
 
@@ -182,13 +228,20 @@ npm run test:e2e:ui
 
 ## Freemium Model
 
-### Free Tier
+### Anonymous Users (No Registration Required)
+- ✅ Immediate composition access in guest mode
 - ✅ Basic kuchi shōga notation (don, ka, doko, tsu)
-- ✅ Single drum compositions
-- ✅ Linear grid interface
-- ✅ Basic audio playback
-- ✅ Pronunciation guide
+- ✅ Single drum compositions with auto-save
+- ✅ Linear grid interface and audio playback
+- ✅ Settings and pronunciation guide
+- ✅ JSON export for local backup
+- ✅ Smart save prompts with signup incentives
+
+### Free Tier (Registered Users)
+- ✅ Everything anonymous users have
+- ✅ Cloud save and sync across devices
 - ✅ Up to 3 saved compositions
+- ✅ Account dashboard and profile management
 
 ### Premium Tier ($9.99/month)
 - ✅ Everything in free tier
