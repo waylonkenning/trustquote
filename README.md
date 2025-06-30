@@ -47,10 +47,20 @@ This application provides a digital platform for creating and composing traditio
   - Invoice generation and billing history
   - Tax calculation by region
   - Comprehensive pricing page with feature comparison
+- **Landing Page & Marketing** - Conversion-optimized marketing website
+  - Hero section with 3D app preview and compelling CTAs
+  - Features showcase with premium badges and authentic taiko terminology
+  - Integrated pricing section with trial signup flows
+  - Social proof with testimonials and usage statistics
+  - Interactive FAQ addressing common concerns
+  - Final conversion CTA with multiple engagement paths
+  - Professional footer with comprehensive navigation
+  - Mobile-responsive design with smooth animations
+  - SEO-optimized structure and performance
 
 ### 🚧 In Development
 - **User Authentication System** - Sign up, login, and account management
-- **Landing Page** - Marketing page with feature showcase and conversion optimization
+- **Account Dashboard** - Subscription management and billing interface
 
 ### 📋 Planned
 - **Subscription Management** - Account dashboard for billing and plan changes
@@ -126,10 +136,21 @@ npm run test:e2e:ui
   - `/composables` - Vue composables for freemium and subscription logic
   - `/services` - Business logic services (subscription, stripe, audio)
   - `/types` - TypeScript type definitions
-  - `/views` - Page components (composition, pricing, checkout, success)
+  - `/views` - Page components (landing, composition, pricing, checkout, success)
 - `/tests` - Test files
-  - `/e2e` - Playwright end-to-end tests for freemium and payment flows
+  - `/e2e` - Playwright end-to-end tests for landing page, freemium and payment flows
 - `/public` - Static assets
+
+## Application Routes
+
+- `/` - Landing page with marketing content and conversion CTAs
+- `/compose` - Main composition application interface
+- `/pricing` - Detailed pricing page with feature comparison
+- `/checkout` - Payment processing and subscription signup
+- `/payment-success` - Post-purchase confirmation and onboarding
+- `/signup` - User registration (planned)
+- `/login` - User authentication (planned)
+- `/account` - Account management and billing dashboard (planned)
 
 ## Freemium Model
 
@@ -160,6 +181,15 @@ npm run test:e2e:ui
 - ✅ Usage tracking and limits
 - ✅ Premium feature gates
 - ✅ Billing and invoice management
+
+### Marketing & Conversion
+- ✅ Landing page with hero section and 3D app preview
+- ✅ Features showcase with premium differentiation
+- ✅ Social proof and testimonials
+- ✅ Interactive FAQ section
+- ✅ Multiple conversion CTAs and trial signup flows
+- ✅ Mobile-responsive design
+- ✅ SEO optimization and performance
 
 ## Contributing
 
