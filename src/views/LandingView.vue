@@ -1,5 +1,41 @@
 <template>
   <div class="landing-view">
+    <!-- Navigation Header -->
+    <nav class="main-nav">
+      <div class="nav-container">
+        <div class="nav-brand">
+          <router-link to="/" class="brand-link">
+            <span class="brand-icon">🥁</span>
+            <span class="brand-text">Taiko Composer</span>
+          </router-link>
+        </div>
+        
+        <div class="nav-menu">
+          <router-link to="/pricing" class="nav-link">Pricing</router-link>
+          <a href="/help" class="nav-link">Help</a>
+          
+          <div v-if="!isAuthenticated" class="nav-auth">
+            <button 
+              class="nav-button secondary" 
+              @click="showLoginModal"
+              data-testid="sign-in-button"
+            >
+              Sign In
+            </button>
+            <button 
+              class="nav-button primary" 
+              @click="showSignupModal"
+              data-testid="sign-up-button"
+            >
+              Start Free Trial
+            </button>
+          </div>
+          
+          <UserMenu v-else />
+        </div>
+      </div>
+    </nav>
+
     <!-- Hero Section -->
     <section class="hero-section">
       <div class="hero-container">
@@ -405,14 +441,50 @@
         </div>
       </div>
     </footer>
+
+    <!-- Authentication Modals -->
+    <LoginModal 
+      v-if="showLogin" 
+      @close="closeModal"
+      @showSignup="switchToSignup"
+      @showForgotPassword="switchToForgotPassword"
+      @loginSuccess="handleAuthSuccess"
+    />
+    
+    <SignupModal 
+      v-if="showSignup" 
+      :startTrial="signupWithTrial"
+      @close="closeModal"
+      @showLogin="switchToLogin"
+      @registrationSuccess="handleAuthSuccess"
+    />
+    
+    <ForgotPasswordModal 
+      v-if="showForgotPassword" 
+      @close="closeModal"
+      @showLogin="switchToLogin"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { useAuth } from '@/services/authService'
+import LoginModal from '@/components/LoginModal.vue'
+import SignupModal from '@/components/SignupModal.vue'
+import ForgotPasswordModal from '@/components/ForgotPasswordModal.vue'
+import UserMenu from '@/components/UserMenu.vue'
 
 const router = useRouter()
+const route = useRoute()
+const { isAuthenticated } = useAuth()
+
+// Authentication modal state
+const showLogin = ref(false)
+const showSignup = ref(false)
+const showForgotPassword = ref(false)
+const signupWithTrial = ref(false)
 
 // FAQ data
 const faqs = reactive([
@@ -473,12 +545,182 @@ const watchDemo = () => {
   // Would open demo video modal or redirect to demo page
   console.log('Demo clicked')
 }
+
+// Authentication methods
+const showLoginModal = () => {
+  signupWithTrial.value = false
+  showLogin.value = true
+}
+
+const showSignupModal = () => {
+  signupWithTrial.value = true
+  showSignup.value = true
+}
+
+const closeModal = () => {
+  router.push('/')
+}
+
+const switchToSignup = () => {
+  router.push('/signup?trial=true')
+}
+
+const switchToLogin = () => {
+  router.push('/login')
+}
+
+const switchToForgotPassword = () => {
+  router.push('/forgot-password')
+}
+
+const handleAuthSuccess = (user: any) => {
+  // Close all modals
+  showLogin.value = false
+  showSignup.value = false
+  showForgotPassword.value = false
+  
+  // Welcome user or redirect as needed
+  console.log('User authenticated:', user)
+}
+
+// Handle route-based modal opening
+onMounted(() => {
+  handleRouteChange()
+})
+
+watch(() => route.path, () => {
+  handleRouteChange()
+})
+
+const handleRouteChange = () => {
+  // Reset all modals
+  showLogin.value = false
+  showSignup.value = false
+  showForgotPassword.value = false
+  signupWithTrial.value = false
+  
+  // Open appropriate modal based on route
+  switch (route.path) {
+    case '/login':
+      showLogin.value = true
+      break
+    case '/signup':
+      signupWithTrial.value = route.query.trial === 'true'
+      showSignup.value = true
+      break
+    case '/forgot-password':
+      showForgotPassword.value = true
+      break
+  }
+}
 </script>
 
 <style scoped>
 .landing-view {
   background: #1a1a1a;
   color: #ffffff;
+}
+
+/* Navigation */
+.main-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(26, 26, 26, 0.95);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid #3a3a3a;
+  z-index: 100;
+}
+
+.nav-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  height: 70px;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+}
+
+.brand-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 1.25rem;
+}
+
+.brand-icon {
+  font-size: 1.5rem;
+}
+
+.brand-text {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.nav-menu {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
+.nav-link {
+  color: #cccccc;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.nav-link:hover {
+  color: #ffffff;
+}
+
+.nav-auth {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.nav-button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+
+.nav-button.secondary {
+  background: transparent;
+  color: #cccccc;
+  border: 1px solid #3a3a3a;
+}
+
+.nav-button.secondary:hover {
+  background: #3a3a3a;
+  color: #ffffff;
+}
+
+.nav-button.primary {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+}
+
+.nav-button.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3);
 }
 
 .container {
@@ -489,7 +731,7 @@ const watchDemo = () => {
 
 /* Hero Section */
 .hero-section {
-  padding: 4rem 0 6rem;
+  padding: 8rem 0 6rem;
   background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
 }
 
@@ -1166,6 +1408,23 @@ const watchDemo = () => {
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .nav-menu {
+    gap: 1rem;
+  }
+  
+  .nav-auth {
+    gap: 0.5rem;
+  }
+  
+  .nav-button {
+    padding: 0.5rem 1rem;
+    font-size: 0.8125rem;
+  }
+  
+  .brand-text {
+    display: none;
+  }
+  
   .hero-content {
     grid-template-columns: 1fr;
     text-align: center;

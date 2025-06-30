@@ -12,7 +12,11 @@ const router = createRouter({
     { path: '/compose', component: CompositionView },
     { path: '/pricing', component: () => import('./views/PricingView.vue') },
     { path: '/checkout', component: () => import('./views/CheckoutView.vue') },
-    { path: '/payment-success', component: () => import('./views/PaymentSuccessView.vue') }
+    { path: '/payment-success', component: () => import('./views/PaymentSuccessView.vue') },
+    { path: '/account', component: () => import('./views/AccountView.vue') },
+    { path: '/login', component: () => import('./views/LandingView.vue') },
+    { path: '/signup', component: () => import('./views/LandingView.vue') },
+    { path: '/forgot-password', component: () => import('./views/LandingView.vue') }
   ]
 })
 
