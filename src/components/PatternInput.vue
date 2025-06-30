@@ -182,6 +182,8 @@ const patternText = ref(props.part.pattern || '')
 const validationError = ref('')
 const showAutocomplete = ref(false)
 const suggestions = ref<Array<{ name: string; pattern: string }>>([])
+// Keep track of visual beat state separately
+const visualBeatState = ref(new Map<number, string>())
 const isPlaying = ref(false)
 const loopEnabled = ref(false)
 const tempo = ref(120)
@@ -195,15 +197,12 @@ const visualBeats = computed(() => {
   const maxBeats = 16
   const beats = new Array(maxBeats).fill(null).map((_, i) => ({ syllable: '', beat: i + 1 }))
   
-  // For visual mode, parse the pattern as positional beats
-  if (patternText.value.trim()) {
-    const parts = patternText.value.split(' ')
-    for (let i = 0; i < Math.min(parts.length, maxBeats); i++) {
-      if (parts[i] && parts[i].trim()) {
-        beats[i].syllable = parts[i].trim()
-      }
+  // Use the visual beat state to populate the grid
+  visualBeatState.value.forEach((syllable, position) => {
+    if (position < maxBeats) {
+      beats[position].syllable = syllable
     }
-  }
+  })
   
   return beats
 })
@@ -211,6 +210,11 @@ const visualBeats = computed(() => {
 const handleTextInput = async () => {
   const validation = validatePattern(patternText.value)
   validationError.value = validation.error || ''
+  
+  // Sync visual state when text changes (but only if we're not in visual mode to avoid loops)
+  if (viewMode.value !== 'visual') {
+    syncVisualStateFromText()
+  }
   
   emit('pattern-updated', patternText.value)
   
@@ -233,52 +237,68 @@ const handleKeydown = (event: KeyboardEvent) => {
 const applySuggestion = (suggestion: { name: string; pattern: string }) => {
   patternText.value = suggestion.pattern
   showAutocomplete.value = false
+  syncVisualStateFromText()
   handleTextInput()
 }
 
-const toggleBeat = (beatIndex: number) => {
-  // For visual mode, we need to work with positional beats directly
-  // Current approach: treat the pattern as a sequence of space-separated positions
+const syncTextFromVisualState = () => {
+  // Convert visual state to text pattern using positional representation with dashes
+  if (visualBeatState.value.size === 0) {
+    patternText.value = ''
+  } else {
+    const maxPosition = Math.max(...Array.from(visualBeatState.value.keys()))
+    const result: string[] = []
+    
+    for (let i = 0; i <= maxPosition; i++) {
+      if (visualBeatState.value.has(i)) {
+        result.push(visualBeatState.value.get(i)!)
+      } else {
+        result.push('-')
+      }
+    }
+    
+    patternText.value = result.join(' ')
+  }
+  handleTextInput()
+}
+
+const syncVisualStateFromText = () => {
+  // Clear existing visual state
+  visualBeatState.value.clear()
   
-  // Convert current pattern to a fixed-length array
-  const maxBeats = 16
-  const beatArray: string[] = new Array(maxBeats).fill('')
-  
-  // If we have existing text, try to parse it positionally
+  // Parse text pattern and map to visual positions
   if (patternText.value.trim()) {
-    // Split by spaces but preserve empty positions
     const parts = patternText.value.split(' ')
-    for (let i = 0; i < Math.min(parts.length, maxBeats); i++) {
-      if (parts[i] && parts[i].trim()) {
-        beatArray[i] = parts[i].trim()
+    
+    // Check if the pattern uses positional representation (contains dashes)
+    if (patternText.value.includes('-')) {
+      // Positional pattern - map directly by index
+      for (let i = 0; i < parts.length; i++) {
+        if (parts[i] && parts[i].trim() && parts[i].trim() !== '-') {
+          visualBeatState.value.set(i, parts[i].trim())
+        }
+      }
+    } else {
+      // Consecutive pattern - map to consecutive positions starting from 0
+      for (let i = 0; i < parts.length; i++) {
+        if (parts[i] && parts[i].trim()) {
+          visualBeatState.value.set(i, parts[i].trim())
+        }
       }
     }
   }
-  
-  // Toggle the clicked beat
-  if (beatArray[beatIndex]) {
-    beatArray[beatIndex] = '' // Remove syllable if present
+}
+
+const toggleBeat = (beatIndex: number) => {
+  // Toggle the beat in the visual state
+  if (visualBeatState.value.has(beatIndex)) {
+    visualBeatState.value.delete(beatIndex) // Remove syllable if present
   } else {
-    beatArray[beatIndex] = 'don' // Add default syllable
+    visualBeatState.value.set(beatIndex, 'don') // Add default syllable
   }
   
-  // Convert back to text, preserving only the filled positions
-  // but maintaining relative spacing
-  const activeBeatPositions = []
-  for (let i = 0; i < maxBeats; i++) {
-    if (beatArray[i]) {
-      activeBeatPositions.push({ pos: i, syllable: beatArray[i] })
-    }
-  }
-  
-  if (activeBeatPositions.length === 0) {
-    patternText.value = ''
-  } else {
-    // Create a compact representation: just the syllables in order
-    patternText.value = activeBeatPositions.map(beat => beat.syllable).join(' ')
-  }
-  
-  handleTextInput()
+  // Sync the text pattern with the visual state
+  syncTextFromVisualState()
 }
 
 const togglePlayback = async () => {
@@ -319,9 +339,13 @@ const handleCircularBeatUpdate = (partId: string, beatIndex: number, syllable: s
   handleTextInput()
 }
 
+// Initialize visual state from the initial pattern
+syncVisualStateFromText()
+
 // Watch for external pattern changes
 watch(() => props.part.pattern, (newPattern) => {
   patternText.value = newPattern || ''
+  syncVisualStateFromText()
 })
 </script>
 

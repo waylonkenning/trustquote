@@ -75,8 +75,8 @@ test.describe('Linear Grid Fixes', () => {
     // Switch back to text mode
     await page.click('[data-testid="view-text"]');
     
-    // Verify text input has the pattern
-    await expect(textInput).toHaveValue('don don don');
+    // Verify text input has the pattern (positional with dashes for gaps)
+    await expect(textInput).toHaveValue('don - don - - don');
   });
 
   test('circular view should display content when clicked', async ({ page }) => {
