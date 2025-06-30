@@ -14,13 +14,19 @@ This application provides a digital platform for creating and composing traditio
 - **Pattern Input** - Text and visual notation modes with conversion
 - **Linear Grid Interface** - Interactive beat-by-beat pattern editing with visual feedback
 - **Circular Rhythm Visualization** - Polar coordinate beat cycle display with interactive editing
+- **Ensemble Coordination System** - Multi-drum role management with traditional hierarchy
+  - Ensemble mode toggle for advanced composition workflows
+  - Traditional role assignment (lead, accompaniment, foundation, accent)
+  - Smart volume balancing based on drum characteristics
+  - Mute/Solo controls with manual vs automatic tracking
+  - Overview grid with statistics and visual indicators
+  - Hierarchy view following traditional jo-ha-kyū principles
 - **Pronunciation Guide** - Interactive syllable reference with audio examples
 - **Settings Management** - Customizable notation preferences with localStorage
 - **Hand Sticking Notation** - R/L indicators for technique specification
 - **Audio Synthesis** - Web Audio API integration for syllable playback
 
 ### 🚧 In Development
-- **Ensemble Coordination** - Multi-drum role management system
 - **Real-time Collaboration** - Multi-user composition sessions
 
 ### 📋 Planned
