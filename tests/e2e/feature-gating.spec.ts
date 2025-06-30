@@ -100,7 +100,7 @@ test.describe('Feature Gating and Premium Restrictions', () => {
       }
 
       // Should show usage indicator
-      await expect(page.locator('[data-testid="composition-usage"]')).toContainText('3 of 3');
+      await expect(page.locator('[data-testid="composition-usage"]')).toContainText('3 / 3 compositions');
       
       // Attempt 4th composition
       await page.click('[data-testid="create-composition"]');
@@ -108,9 +108,9 @@ test.describe('Feature Gating and Premium Restrictions', () => {
       await expect(page.locator('[data-testid="composition-limit-warning"]'))
         .toContainText('You have reached the limit of 3 compositions');
 
-      // Should show contextual upgrade prompt
-      await expect(page.locator('[data-testid="upgrade-to-premium"]')).toBeVisible();
-      await page.click('[data-testid="upgrade-to-premium"]');
+      // Should show contextual upgrade prompt in the composition limit modal
+      await expect(page.locator('[data-testid="composition-limit-warning"] [data-testid="upgrade-to-premium"]')).toBeVisible();
+      await page.click('[data-testid="composition-limit-warning"] [data-testid="upgrade-to-premium"]');
       
       // Should redirect to pricing/checkout
       await expect(page).toHaveURL(/\/(pricing|checkout)/);
@@ -132,26 +132,19 @@ test.describe('Feature Gating and Premium Restrictions', () => {
         .toContainText('approaching your free tier limit');
     });
 
-    test('should enforce drum part limitations', async ({ page }) => {
+    test('should block ensemble mode for free users', async ({ page }) => {
       await page.click('[data-testid="create-composition"]');
-      await page.fill('[data-testid="composition-title"]', 'Drum Limit Test');
+      await page.fill('[data-testid="composition-title"]', 'Basic Composition');
+      
+      // Ensemble mode should be disabled for free users
+      await expect(page.locator('[data-testid="enable-ensemble-mode"]')).toBeDisabled();
+      await expect(page.locator('.premium-badge-inline')).toContainText('Premium');
+      
+      // Create basic composition (single drum, no ensemble)
       await page.click('[data-testid="confirm-create"]');
 
-      // Add first drum part (should work)
-      await page.click('[data-testid="add-part"]');
-      await page.selectOption('[data-testid="drum-type"]', 'chu-daiko');
-      await page.click('[data-testid="confirm-add-part"]');
-      await expect(page.locator('[data-testid="drum-part-1"]')).toBeVisible();
-
-      // Try to add second drum part (should trigger gate)
-      await page.click('[data-testid="add-part"]');
-      await expect(page.locator('[data-testid="premium-feature-gate"]')).toBeVisible();
-      await expect(page.locator('[data-testid="premium-feature-gate"]'))
-        .toContainText('Multi-drum ensemble coordination is a premium feature');
-
-      // Gate should show current context
-      await expect(page.locator('[data-testid="premium-feature-gate"]'))
-        .toContainText('You currently have 1 drum part');
+      // Should still be able to create basic compositions
+      await expect(page.locator('.composition-main')).toBeVisible();
     });
 
     test('should block regional notation styles', async ({ page }) => {
