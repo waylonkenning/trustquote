@@ -24,10 +24,10 @@
             </button>
             <button 
               class="nav-button primary" 
-              @click="showSignupModal"
-              data-testid="sign-up-button"
+              @click="startComposing"
+              data-testid="start-composing-button"
             >
-              Start Free Trial
+              Start Composing
             </button>
           </div>
           
@@ -51,9 +51,9 @@
             <div class="hero-cta">
               <button 
                 class="cta-primary"
-                @click="startFreeTrial"
+                @click="startComposing"
               >
-                Start Free Trial
+                Start Composing
               </button>
               <button 
                 class="cta-secondary"
@@ -69,15 +69,15 @@
             <div class="hero-features">
               <div class="feature-badge">
                 <span class="badge-icon">✓</span>
-                <span>14-day free trial</span>
+                <span>Start immediately</span>
               </div>
               <div class="feature-badge">
                 <span class="badge-icon">✓</span>
-                <span>No credit card required</span>
+                <span>No signup required</span>
               </div>
               <div class="feature-badge">
                 <span class="badge-icon">✓</span>
-                <span>Cancel anytime</span>
+                <span>Upgrade when you need more</span>
               </div>
             </div>
           </div>
@@ -270,10 +270,10 @@
               </div>
             </div>
             
-            <button class="plan-button premium-button" @click="startPremiumTrial">
-              Start Free Trial
+            <button class="plan-button premium-button" @click="upgradeToPremium">
+              Upgrade to Premium
             </button>
-            <p class="trial-note">14 days free, then $9.99/month</p>
+            <p class="trial-note">$9.99/month • Cancel anytime</p>
           </div>
         </div>
       </div>
@@ -379,18 +379,18 @@
           <p>Join hundreds of taiko artists already using Taiko Composer to create authentic, powerful drumming pieces.</p>
           
           <div class="cta-buttons">
-            <button class="cta-primary large" @click="startFreeTrial">
-              Start Free Trial
+            <button class="cta-primary large" @click="startComposing">
+              Start Composing Now
             </button>
             <button class="cta-secondary large" @click="viewPricing">
-              View Pricing
+              View Premium Features
             </button>
           </div>
           
           <div class="cta-features">
-            <span>✓ 14-day free trial</span>
-            <span>✓ No credit card required</span>
-            <span>✓ Cancel anytime</span>
+            <span>✓ Start immediately</span>
+            <span>✓ No signup required</span>
+            <span>✓ Upgrade when you need more</span>
           </div>
         </div>
       </div>
@@ -504,8 +504,8 @@ const faqs = reactive([
     isOpen: false
   },
   {
-    question: "How does the 14-day trial work?",
-    answer: "Start your trial instantly with just an email - no credit card required. You'll have full access to all premium features for 14 days. Cancel anytime or continue with our monthly subscription.",
+    question: "How does the free experience work?",
+    answer: "Start composing immediately without any signup. Create up to 3 compositions with basic features. When you need more compositions or advanced features like multi-drum ensembles and exports, upgrade to Premium for $9.99/month.",
     isOpen: false
   },
   {
@@ -525,12 +525,12 @@ const toggleFaq = (index: number) => {
   faqs[index].isOpen = !faqs[index].isOpen
 }
 
-const startFreeTrial = () => {
-  router.push('/signup?trial=true')
+const startComposing = () => {
+  router.push('/compose')
 }
 
-const startPremiumTrial = () => {
-  router.push('/signup?trial=true&plan=premium')
+const upgradeToPremium = () => {
+  router.push('/pricing')
 }
 
 const getStartedFree = () => {
@@ -553,7 +553,7 @@ const showLoginModal = () => {
 }
 
 const showSignupModal = () => {
-  signupWithTrial.value = true
+  signupWithTrial.value = false
   showSignup.value = true
 }
 
@@ -562,7 +562,7 @@ const closeModal = () => {
 }
 
 const switchToSignup = () => {
-  router.push('/signup?trial=true')
+  router.push('/signup')
 }
 
 const switchToLogin = () => {

@@ -15,13 +15,13 @@ test.describe('Landing Page', () => {
       await expect(page.getByText('digital platform for composing traditional Japanese taiko')).toBeVisible();
       
       // Check CTAs are present
-      await expect(page.getByText('Start Free Trial')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Start Composing' }).first()).toBeVisible();
       await expect(page.getByText('Watch Demo')).toBeVisible();
       
       // Check trust indicators
-      await expect(page.getByText('14-day free trial')).toBeVisible();
-      await expect(page.getByText('No credit card required')).toBeVisible();
-      await expect(page.getByText('Cancel anytime')).toBeVisible();
+      await expect(page.getByText('✓ Start immediately')).toBeVisible();
+      await expect(page.getByText('✓ No signup required')).toBeVisible();
+      await expect(page.getByText('✓ Upgrade when you need more')).toBeVisible();
     });
 
     test('should show app preview with notation demo', async ({ page }) => {
@@ -41,10 +41,10 @@ test.describe('Landing Page', () => {
     });
 
     test('should handle CTA button clicks', async ({ page }) => {
-      // Test free trial CTA
-      await page.click('text=Start Free Trial');
-      // Should navigate to signup with trial parameter
-      await expect(page).toHaveURL(/\/signup\?trial=true/);
+      // Test start composing CTA
+      await page.click('text=Start Composing');
+      // Should navigate directly to compose page
+      await expect(page).toHaveURL('/compose');
       
       // Go back and test demo CTA
       await page.goBack();
@@ -114,7 +114,7 @@ test.describe('Landing Page', () => {
       await expect(premiumPlan.getByText('$9.99')).toBeVisible();
       await expect(premiumPlan.getByText('/month')).toBeVisible();
       await expect(premiumPlan.getByText('Most Popular')).toBeVisible();
-      await expect(premiumPlan.getByText('Start Free Trial')).toBeVisible();
+      await expect(premiumPlan.getByText('Start Composing')).toBeVisible();
     });
 
     test('should list features accurately for each plan', async ({ page }) => {
@@ -145,8 +145,8 @@ test.describe('Landing Page', () => {
       // Go back and test premium plan button
       await page.goBack();
       await page.locator('.pricing-section').scrollIntoViewIfNeeded();
-      await page.click('text=Start Free Trial');
-      await expect(page).toHaveURL(/\/signup\?trial=true/);
+      await page.click('text=Start Composing');
+      await expect(page).toHaveURL('/compose');
     });
   });
 
@@ -197,7 +197,7 @@ test.describe('Landing Page', () => {
       await expect(page.getByText('What is kuchi shōga notation?')).toBeVisible();
       await expect(page.getByText('Can I use this without taiko experience?')).toBeVisible();
       await expect(page.getByText('What\'s included in the free version?')).toBeVisible();
-      await expect(page.getByText('How does the 14-day trial work?')).toBeVisible();
+      await expect(page.getByText('How does the free experience work?')).toBeVisible();
       
       // Test FAQ expansion
       const firstFaq = page.locator('.faq-item').first();
@@ -223,7 +223,7 @@ test.describe('Landing Page', () => {
       await page.click('text=What\'s included in the free version?');
       await expect(page.getByText('basic kuchi shōga notation, single drum compositions')).toBeVisible();
       
-      await page.click('text=How does the 14-day trial work?');
+      await page.click('text=How does the free experience work?');
       await expect(page.getByText('no credit card required')).toBeVisible();
       await expect(page.getByText('Cancel anytime')).toBeVisible();
       
@@ -241,11 +241,11 @@ test.describe('Landing Page', () => {
       await expect(page.getByText('Join hundreds of taiko artists')).toBeVisible();
       
       // Check CTA buttons
-      await expect(page.locator('.final-cta-section').getByText('Start Free Trial')).toBeVisible();
+      await expect(page.locator('.final-cta-section').getByText('Start Composing')).toBeVisible();
       await expect(page.locator('.final-cta-section').getByText('View Pricing')).toBeVisible();
       
       // Check final trust indicators
-      await expect(page.locator('.cta-features').getByText('14-day free trial')).toBeVisible();
+      await expect(page.locator('.cta-features').getByText('Start immediately')).toBeVisible();
       await expect(page.locator('.cta-features').getByText('No credit card required')).toBeVisible();
       await expect(page.locator('.cta-features').getByText('Cancel anytime')).toBeVisible();
     });
@@ -254,8 +254,8 @@ test.describe('Landing Page', () => {
       await page.locator('.final-cta-section').scrollIntoViewIfNeeded();
       
       // Test final trial CTA
-      await page.locator('.final-cta-section').getByText('Start Free Trial').click();
-      await expect(page).toHaveURL(/\/signup\?trial=true/);
+      await page.locator('.final-cta-section').getByText('Start Composing').click();
+      await expect(page).toHaveURL('/compose');
       
       // Go back and test pricing CTA
       await page.goBack();
@@ -298,7 +298,7 @@ test.describe('Landing Page', () => {
       
       // Check hero section adapts
       await expect(page.locator('.hero-title')).toBeVisible();
-      await expect(page.getByText('Start Free Trial')).toBeVisible();
+      await expect(page.getByText('Start Composing')).toBeVisible();
       
       // Check features grid adapts
       await page.locator('.features-section').scrollIntoViewIfNeeded();
@@ -342,7 +342,7 @@ test.describe('Landing Page', () => {
 
     test('should have accessible buttons and links', async ({ page }) => {
       // Check buttons have accessible text
-      await expect(page.getByRole('button', { name: 'Start Free Trial' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Start Composing' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Watch Demo' })).toBeVisible();
       await expect(page.getByRole('button', { name: 'Get Started Free' })).toBeVisible();
       
@@ -374,11 +374,11 @@ test.describe('Landing Page', () => {
       });
       
       // Test trial signup tracking
-      await page.click('text=Start Free Trial');
+      await page.click('text=Start Composing');
       
       // In a real implementation, this would track conversion events
       // For now, we just verify the navigation works
-      await expect(page).toHaveURL(/\/signup\?trial=true/);
+      await expect(page).toHaveURL('/compose');
     });
   });
 });

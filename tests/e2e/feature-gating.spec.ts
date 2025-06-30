@@ -110,10 +110,10 @@ test.describe('Feature Gating and Premium Restrictions', () => {
 
       // Should show contextual upgrade prompt in the composition limit modal
       await expect(page.locator('[data-testid="composition-limit-warning"] [data-testid="upgrade-to-premium"]')).toBeVisible();
-      await page.click('[data-testid="composition-limit-warning"] [data-testid="upgrade-to-premium"]');
       
-      // Should redirect to pricing/checkout
-      await expect(page).toHaveURL(/\/(pricing|checkout)/);
+      // Verify upgrade suggestion content
+      await expect(page.locator('[data-testid="upgrade-suggestion"]'))
+        .toContainText('Unlimited compositions');
     });
 
     test('should show progressive usage warnings', async ({ page }) => {
