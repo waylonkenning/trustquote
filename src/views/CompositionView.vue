@@ -21,23 +21,66 @@
     </header>
 
     <main class="composition-main" v-if="currentComposition">
-      <KuchiShogaEditor 
-        :composition="currentComposition"
-        @pattern-updated="updatePattern"
-        @part-added="addPart"
-      />
+      <div v-if="currentComposition.isEnsemble" data-testid="ensemble-view" class="ensemble-view">
+        <KuchiShogaEditor 
+          :composition="currentComposition"
+          @pattern-updated="updatePattern"
+          @part-added="addPart"
+        />
+      </div>
+      <div v-else class="single-composition-view">
+        <KuchiShogaEditor 
+          :composition="currentComposition"
+          @pattern-updated="updatePattern"
+          @part-added="addPart"
+        />
+      </div>
     </main>
 
     <!-- Create Composition Dialog -->
     <div v-if="showCreateDialog" class="modal-overlay" @click="showCreateDialog = false">
       <div class="modal" @click.stop>
         <h2>Create New Composition</h2>
-        <input 
-          data-testid="composition-title"
-          v-model="newCompositionTitle"
-          placeholder="Composition Title"
-          class="input"
-        />
+        <div class="form-group">
+          <label for="composition-title">Title</label>
+          <input 
+            id="composition-title"
+            data-testid="composition-title"
+            v-model="newCompositionTitle"
+            placeholder="Composition Title"
+            class="input"
+          />
+        </div>
+        
+        <div class="form-group">
+          <label for="tempo-input">Tempo (BPM)</label>
+          <input 
+            id="tempo-input"
+            data-testid="tempo-input"
+            v-model.number="newCompositionTempo"
+            type="number"
+            min="60"
+            max="200"
+            placeholder="120"
+            class="input"
+          />
+        </div>
+        
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input 
+              data-testid="enable-ensemble-mode"
+              type="checkbox"
+              v-model="enableEnsembleMode"
+              class="checkbox"
+            />
+            Enable Ensemble Mode
+            <span class="checkbox-description">
+              Advanced coordination for multiple drum parts with role management
+            </span>
+          </label>
+        </div>
+        
         <div class="modal-actions">
           <button 
             data-testid="confirm-create"
@@ -46,7 +89,7 @@
           >
             Create
           </button>
-          <button @click="showCreateDialog = false" class="btn-secondary">
+          <button @click="closeCreateDialog" class="btn-secondary">
             Cancel
           </button>
         </div>
@@ -70,6 +113,8 @@ import type { Composition } from '@/types/composition'
 const showCreateDialog = ref(false)
 const showSettings = ref(false)
 const newCompositionTitle = ref('')
+const newCompositionTempo = ref(120)
+const enableEnsembleMode = ref(false)
 const currentComposition = ref<Composition | null>(null)
 
 const createComposition = () => {
@@ -77,10 +122,17 @@ const createComposition = () => {
     id: Date.now().toString(),
     title: newCompositionTitle.value || 'Untitled Composition',
     parts: [],
-    tempo: 120,
-    createdAt: new Date()
+    tempo: newCompositionTempo.value || 120,
+    createdAt: new Date(),
+    isEnsemble: enableEnsembleMode.value
   }
+  closeCreateDialog()
+}
+
+const closeCreateDialog = () => {
   newCompositionTitle.value = ''
+  newCompositionTempo.value = 120
+  enableEnsembleMode.value = false
   showCreateDialog.value = false
 }
 
@@ -93,15 +145,29 @@ const updatePattern = (partId: string, pattern: string) => {
   }
 }
 
-const addPart = (drumType: string) => {
+const addPart = (drumType: string, role?: string) => {
   if (currentComposition.value) {
     const newPart = {
       id: Date.now().toString(),
       drumType: drumType as any,
       pattern: '',
-      volume: 80
+      volume: getDefaultVolume(drumType as any),
+      role: role as any,
+      isMuted: false,
+      isSolo: false,
+      isManuallyMuted: false
     }
     currentComposition.value.parts.push(newPart)
+  }
+}
+
+const getDefaultVolume = (drumType: string) => {
+  switch (drumType) {
+    case 'o-daiko': return 90
+    case 'chu-daiko': return 75
+    case 'shime-daiko': return 65
+    case 'atarigane': return 55
+    default: return 80
   }
 }
 </script>
@@ -207,5 +273,36 @@ const addPart = (drumType: string) => {
 .input:focus {
   outline: none;
   border-color: #ff6b6b;
+}
+
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #ffffff;
+  font-weight: 500;
+}
+
+.checkbox-label {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.checkbox {
+  margin: 0 !important;
+  accent-color: #ff6b6b;
+}
+
+.checkbox-description {
+  display: block;
+  font-size: 0.875rem;
+  color: #cccccc;
+  font-weight: normal;
+  margin-top: 0.25rem;
 }
 </style>

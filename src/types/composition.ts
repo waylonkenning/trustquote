@@ -4,6 +4,7 @@ export interface Composition {
   parts: CompositionPart[]
   tempo: number
   createdAt: Date
+  isEnsemble?: boolean
 }
 
 export interface CompositionPart {
@@ -11,9 +12,21 @@ export interface CompositionPart {
   drumType: DrumType
   pattern: string
   volume: number
+  role?: DrumRole
+  isMuted?: boolean
+  isSolo?: boolean
+  isManuallyMuted?: boolean
 }
 
 export type DrumType = 'chu-daiko' | 'shime-daiko' | 'o-daiko' | 'atarigane'
+
+export type DrumRole = 'lead' | 'accompaniment' | 'foundation' | 'accent'
+
+export interface EnsembleStats {
+  totalParts: number
+  complexity: 'simple' | 'moderate' | 'complex'
+  balance: 'good' | 'needs-adjustment'
+}
 
 export interface KuchiShogaSyllable {
   syllable: string
