@@ -24,7 +24,15 @@ This application provides a digital platform for creating and composing traditio
 - **Pronunciation Guide** - Interactive syllable reference with audio examples
 - **Settings Management** - Customizable notation preferences with localStorage
 - **Hand Sticking Notation** - R/L indicators for technique specification
-- **Audio Synthesis** - Web Audio API integration for syllable playback
+- **Real-time Audio Playback** - Complete Web Audio API integration for kuchi shōga syllables
+  - Individual syllable sound generation with drum-specific timbres
+  - Tempo-synchronized pattern playback with beat indicators
+  - Ensemble coordination with multi-part audio mixing
+  - Volume balancing per drum type with master volume control
+  - Loop mode and metronome integration with visual feedback
+  - Audio feedback for pattern editing and beat interaction
+  - Pitch adjustment and playback rate controls
+  - Real-time audio context management and browser compatibility
 
 ### 🚧 In Development
 - **Real-time Collaboration** - Multi-user composition sessions

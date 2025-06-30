@@ -164,30 +164,34 @@
 
       <!-- Playback controls -->
       <div class="playback-controls">
-        <button 
-          data-testid="play-pattern"
-          @click="togglePlayback"
-          class="play-button"
-          :class="{ playing: isPlaying }"
-        >
-          {{ isPlaying ? 'Stop' : 'Play' }}
-        </button>
-        <button 
-          data-testid="stop-pattern"
-          @click="stopPlayback"
-          class="stop-button"
-        >
-          Stop
-        </button>
-        <label class="loop-control">
-          <input 
-            data-testid="loop-toggle"
-            type="checkbox"
-            v-model="loopEnabled"
-            :class="{ active: loopEnabled }"
-          />
-          Loop
-        </label>
+        <div class="primary-controls">
+          <button 
+            data-testid="play-pattern"
+            @click="togglePlayback"
+            class="play-button"
+            :class="{ playing: isPlaying }"
+          >
+            {{ isPlaying ? 'Stop' : 'Play' }}
+          </button>
+          <button 
+            data-testid="stop-pattern"
+            @click="stopPlayback"
+            class="stop-button"
+          >
+            Stop
+          </button>
+          <label class="loop-control">
+            <input 
+              data-testid="loop-toggle"
+              type="checkbox"
+              v-model="loopEnabled"
+              :class="{ active: loopEnabled }"
+            />
+            Loop
+            <div v-if="loopEnabled && isPlaying" data-testid="loop-indicator" class="loop-indicator">∞</div>
+          </label>
+        </div>
+        
         <div class="tempo-control">
           <label>Tempo:</label>
           <input 
@@ -200,15 +204,173 @@
           />
           <span data-testid="tempo-display">{{ tempo }} BPM</span>
         </div>
+        
+        <div class="volume-control">
+          <label>Volume:</label>
+          <input 
+            data-testid="volume-slider"
+            type="range"
+            min="0"
+            max="100"
+            v-model="volume"
+            class="volume-slider"
+          />
+          <span data-testid="volume-display">{{ volume }}%</span>
+          <div data-testid="volume-meter" class="volume-meter">
+            <div class="volume-bar" :style="{ width: volume + '%' }"></div>
+          </div>
+        </div>
+        
+        <div class="playback-status">
+          <div data-testid="playback-status" class="status-text">
+            {{ isPlaying ? 'Playing' : 'Stopped' }}
+          </div>
+          <div v-if="isPlaying" data-testid="beat-indicator" class="beat-indicator">
+            Beat: <span data-testid="current-beat">{{ currentBeat + 1 }}</span>
+          </div>
+          <div data-testid="playback-progress" v-if="isPlaying" class="progress-bar">
+            <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
+          </div>
+        </div>
+        
+        <div class="audio-status">
+          <div data-testid="audio-context-status" class="context-status">
+            Audio: {{ audioContextStatus }}
+          </div>
+        </div>
+      </div>
+      
+      <!-- Audio Settings -->
+      <div class="audio-settings" data-testid="audio-settings">
+        <details>
+          <summary>Audio Settings</summary>
+          <div class="settings-grid">
+            <label class="setting-control">
+              <input 
+                data-testid="audio-feedback-toggle"
+                type="checkbox"
+                v-model="audioFeedbackEnabled"
+              />
+              Audio Feedback
+            </label>
+            
+            <label class="setting-control">
+              <input 
+                data-testid="metronome-toggle"
+                type="checkbox"
+                v-model="metronomeEnabled"
+                @change="toggleMetronome"
+              />
+              Metronome
+            </label>
+            
+            <div class="setting-control">
+              <label>Metronome Volume:</label>
+              <input 
+                data-testid="metronome-volume"
+                type="range"
+                min="0"
+                max="100"
+                v-model="metronomeVolume"
+                class="setting-slider"
+              />
+              <span>{{ metronomeVolume }}%</span>
+            </div>
+            
+            <div class="setting-control">
+              <label>Pitch Adjustment:</label>
+              <input 
+                data-testid="pitch-adjustment"
+                type="range"
+                min="-12"
+                max="12"
+                v-model="pitchAdjustment"
+                class="setting-slider"
+              />
+              <span data-testid="pitch-display">{{ pitchAdjustment > 0 ? '+' : '' }}{{ pitchAdjustment }} semitones</span>
+            </div>
+            
+            <div class="setting-control">
+              <label>Playback Rate:</label>
+              <input 
+                data-testid="playback-rate"
+                type="range"
+                min="0.5"
+                max="2.0"
+                step="0.1"
+                v-model="playbackRate"
+                class="setting-slider"
+              />
+              <span data-testid="playback-rate-display">{{ playbackRate }}x</span>
+            </div>
+            
+            <div class="setting-control">
+              <label>Master Volume:</label>
+              <input 
+                data-testid="master-volume"
+                type="range"
+                min="0"
+                max="100"
+                v-model="masterVolume"
+                class="setting-slider"
+                @input="updateMasterVolume"
+              />
+              <span>{{ masterVolume }}%</span>
+            </div>
+            
+            <div :data-testid="`drum-timbre-${part.drumType}`" class="timbre-settings">
+              <h5>{{ part.drumType }} Timbre</h5>
+              <div class="timbre-controls">
+                <div :data-testid="`frequency-${part.drumType}`" class="timbre-control">
+                  <label>Base Frequency:</label>
+                  <span>{{ getDrumBaseFrequency() }}Hz</span>
+                </div>
+                <div :data-testid="`envelope-${part.drumType}`" class="timbre-control">
+                  <label>Envelope:</label>
+                  <span>{{ getDrumEnvelope() }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </details>
+      </div>
+      
+      <!-- Individual Syllable Playback -->
+      <div v-if="parsedSyllables.length > 0" class="syllable-playback">
+        <h4>Individual Syllables:</h4>
+        <div class="syllable-buttons">
+          <button 
+            v-for="(syllable, index) in uniqueSyllables"
+            :key="syllable"
+            :data-testid="`play-syllable-${syllable}`"
+            @click="playSingleSyllable(syllable)"
+            class="syllable-play-btn"
+          >
+            {{ syllable }}
+          </button>
+        </div>
+        <div v-if="audioFeedbackEnabled" data-testid="audio-feedback-indicator" class="feedback-indicator">
+          {{ lastPlayedSyllable ? `Played: ${lastPlayedSyllable}` : '' }}
+        </div>
+      </div>
+      
+      <!-- Metronome Indicators -->
+      <div v-if="metronomeEnabled && isPlaying" class="metronome-display">
+        <div data-testid="metronome-beat" class="metronome-beat" :class="{ accent: isAccentBeat }">
+          ♪
+        </div>
+        <div data-testid="metronome-accent" v-if="isAccentBeat" class="metronome-accent">
+          ♫
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useKuchiShoga } from '@/composables/useKuchiShoga'
-import CircularRhythmVisualizer from './CircularRhythmVisualizer.vue'
+import { audioService } from '@/services/audioService'
 import type { CompositionPart } from '@/types/composition'
 
 interface Props {
@@ -239,6 +401,15 @@ const visualBeatState = ref(new Map<number, string>())
 const isPlaying = ref(false)
 const loopEnabled = ref(false)
 const tempo = ref(120)
+const volume = ref(props.part.volume || 80)
+const currentBeat = ref(0)
+const audioContextStatus = ref('not-initialized')
+const audioFeedbackEnabled = ref(true)
+const metronomeEnabled = ref(false)
+const metronomeVolume = ref(30)
+const pitchAdjustment = ref(0)
+const playbackRate = ref(1.0)
+const masterVolume = ref(70)
 
 const parsedSyllables = computed(() => {
   const result = parseSyllables(patternText.value)
@@ -325,7 +496,7 @@ const getBeatFill = (beatIndex: number) => {
   return syllable ? '#ff6b6b' : '#333'
 }
 
-const onBeatClick = (beatIndex: number) => {
+const onBeatClick = async (beatIndex: number) => {
   console.log('Beat clicked:', beatIndex)
   
   // Simple beat toggle for now
@@ -343,6 +514,11 @@ const onBeatClick = (beatIndex: number) => {
     parts[beatIndex] = '-' // Remove syllable
   } else {
     parts[beatIndex] = 'don' // Add default syllable
+    
+    // Play audio feedback if enabled
+    if (audioFeedbackEnabled.value) {
+      await playSingleSyllable('don')
+    }
   }
   
   patternText.value = parts.join(' ')
@@ -445,33 +621,142 @@ const syncVisualStateFromText = () => {
   }
 }
 
-const toggleBeat = (beatIndex: number) => {
+const toggleBeat = async (beatIndex: number) => {
   // Toggle the beat in the visual state
   if (visualBeatState.value.has(beatIndex)) {
     visualBeatState.value.delete(beatIndex) // Remove syllable if present
   } else {
     visualBeatState.value.set(beatIndex, 'don') // Add default syllable
+    
+    // Play audio feedback if enabled
+    if (audioFeedbackEnabled.value) {
+      await playSingleSyllable('don')
+    }
   }
   
   // Sync the text pattern with the visual state
   syncTextFromVisualState()
 }
 
+const uniqueSyllables = computed(() => {
+  const syllables = parsedSyllables.value.map(s => s.syllable).filter(s => s !== '-')
+  return [...new Set(syllables)]
+})
+
+const progressPercent = computed(() => {
+  if (!isPlaying.value || !patternText.value) return 0
+  const totalBeats = patternText.value.split(' ').filter(s => s.trim() !== '').length
+  return totalBeats > 0 ? (currentBeat.value / totalBeats) * 100 : 0
+})
+
+const isAccentBeat = computed(() => {
+  return currentBeat.value % 4 === 0
+})
+
+const lastPlayedSyllable = ref('')
+
 const togglePlayback = async () => {
   if (isPlaying.value) {
     stopPlayback()
   } else {
+    await startPlayback()
+  }
+}
+
+const startPlayback = async () => {
+  try {
+    await audioService.initialize()
+    audioContextStatus.value = audioService.getAudioContextState()
+    
+    if (metronomeEnabled.value) {
+      audioService.startMetronome(tempo.value, metronomeVolume.value / 100)
+    }
+    
+    audioService.setOnBeatCallback((beat) => {
+      currentBeat.value = beat
+    })
+    
     isPlaying.value = true
-    await playPattern(patternText.value, tempo.value, loopEnabled.value)
+    await audioService.playPattern(
+      patternText.value,
+      props.part.drumType,
+      tempo.value * playbackRate.value,
+      volume.value / 100,
+      loopEnabled.value
+    )
+    
     if (!loopEnabled.value) {
       isPlaying.value = false
     }
+  } catch (error) {
+    console.error('Failed to start playback:', error)
+    audioContextStatus.value = 'error'
   }
 }
 
 const stopPlayback = () => {
   isPlaying.value = false
-  stopAudio()
+  audioService.stopPattern()
+  audioService.stopMetronome()
+  currentBeat.value = 0
+}
+
+const playSingleSyllable = async (syllable: string) => {
+  try {
+    await audioService.initialize()
+    audioContextStatus.value = audioService.getAudioContextState()
+    
+    await audioService.playSyllable(
+      syllable,
+      props.part.drumType,
+      volume.value / 100,
+      pitchAdjustment.value
+    )
+    
+    lastPlayedSyllable.value = syllable
+    
+    // Clear feedback after delay
+    setTimeout(() => {
+      if (lastPlayedSyllable.value === syllable) {
+        lastPlayedSyllable.value = ''
+      }
+    }, 1000)
+  } catch (error) {
+    console.error('Failed to play syllable:', error)
+    audioContextStatus.value = 'error'
+  }
+}
+
+const toggleMetronome = () => {
+  if (metronomeEnabled.value && isPlaying.value) {
+    audioService.startMetronome(tempo.value, metronomeVolume.value / 100)
+  } else {
+    audioService.stopMetronome()
+  }
+}
+
+const updateMasterVolume = () => {
+  audioService.setMasterVolume(masterVolume.value / 100)
+}
+
+const getDrumBaseFrequency = () => {
+  const baseFreqs = {
+    'chu-daiko': '80-120',
+    'shime-daiko': '120-200', 
+    'o-daiko': '60-100',
+    'atarigane': '800-1200'
+  }
+  return baseFreqs[props.part.drumType] || '80-120'
+}
+
+const getDrumEnvelope = () => {
+  const envelopes = {
+    'chu-daiko': 'Medium attack, long sustain',
+    'shime-daiko': 'Fast attack, short decay',
+    'o-daiko': 'Slow attack, very long sustain', 
+    'atarigane': 'Very fast attack, minimal sustain'
+  }
+  return envelopes[props.part.drumType] || 'Standard'
 }
 
 const handleCircularBeatUpdate = (partId: string, beatIndex: number, syllable: string) => {
@@ -495,6 +780,21 @@ const handleCircularBeatUpdate = (partId: string, beatIndex: number, syllable: s
   handleTextInput()
 }
 
+// Initialize audio service
+onMounted(async () => {
+  try {
+    await audioService.initialize()
+    audioContextStatus.value = audioService.getAudioContextState()
+  } catch (error) {
+    console.error('Failed to initialize audio:', error)
+    audioContextStatus.value = 'error'
+  }
+})
+
+onBeforeUnmount(() => {
+  stopPlayback()
+})
+
 // Initialize visual state from the initial pattern
 syncVisualStateFromText()
 
@@ -502,6 +802,20 @@ syncVisualStateFromText()
 watch(() => props.part.pattern, (newPattern) => {
   patternText.value = newPattern || ''
   syncVisualStateFromText()
+})
+
+// Watch volume changes
+watch(volume, (newVolume) => {
+  emit('pattern-updated', patternText.value)
+})
+
+// Watch for tempo changes during playback
+watch(tempo, (newTempo) => {
+  if (isPlaying.value) {
+    // Restart playback with new tempo
+    stopPlayback()
+    setTimeout(() => startPlayback(), 100)
+  }
 })
 </script>
 
@@ -748,5 +1062,233 @@ watch(() => props.part.pattern, (newPattern) => {
 .tempo-slider {
   width: 100px;
   accent-color: #ff6b6b;
+}
+
+.primary-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #cccccc;
+}
+
+.volume-slider {
+  width: 100px;
+  accent-color: #ff6b6b;
+}
+
+.volume-meter {
+  width: 50px;
+  height: 8px;
+  background: #333;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.volume-bar {
+  height: 100%;
+  background: linear-gradient(to right, #4caf50, #ff9800, #f44336);
+  transition: width 0.2s;
+}
+
+.playback-status {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: #cccccc;
+  font-size: 0.9rem;
+}
+
+.beat-indicator {
+  color: #ff6b6b;
+  font-weight: bold;
+}
+
+.progress-bar {
+  width: 100px;
+  height: 4px;
+  background: #333;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #ff6b6b;
+  transition: width 0.1s;
+}
+
+.audio-status {
+  color: #cccccc;
+  font-size: 0.8rem;
+}
+
+.context-status {
+  padding: 0.25rem 0.5rem;
+  background: #333;
+  border-radius: 4px;
+}
+
+.audio-settings {
+  background: #252525;
+  border-top: 1px solid #404040;
+}
+
+.audio-settings summary {
+  padding: 1rem;
+  cursor: pointer;
+  color: #cccccc;
+  font-weight: 500;
+}
+
+.audio-settings summary:hover {
+  color: #fff;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.setting-control {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #cccccc;
+  font-size: 0.9rem;
+}
+
+.setting-control input[type="checkbox"] {
+  accent-color: #ff6b6b;
+}
+
+.setting-slider {
+  width: 80px;
+  accent-color: #ff6b6b;
+}
+
+.syllable-playback {
+  padding: 1rem;
+  background: #252525;
+  border-top: 1px solid #404040;
+}
+
+.syllable-playback h4 {
+  margin-bottom: 0.5rem;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.syllable-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.syllable-play-btn {
+  padding: 0.5rem 1rem;
+  background: #333;
+  color: #ff6b6b;
+  border: 1px solid #404040;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.syllable-play-btn:hover {
+  background: #ff6b6b;
+  color: white;
+}
+
+.feedback-indicator {
+  color: #4caf50;
+  font-size: 0.8rem;
+  font-style: italic;
+}
+
+.metronome-display {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  z-index: 1000;
+}
+
+.metronome-beat {
+  font-size: 1.5rem;
+  color: #4caf50;
+  animation: metronome-pulse 0.1s ease-out;
+}
+
+.metronome-beat.accent {
+  color: #ff6b6b;
+  font-size: 2rem;
+}
+
+.metronome-accent {
+  color: #ff9800;
+  font-size: 1.2rem;
+}
+
+.loop-indicator {
+  color: #4caf50;
+  font-size: 1.2rem;
+  margin-left: 0.25rem;
+}
+
+@keyframes metronome-pulse {
+  0% { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+
+.timbre-settings {
+  grid-column: span 2;
+  background: #333;
+  padding: 1rem;
+  border-radius: 4px;
+}
+
+.timbre-settings h5 {
+  margin: 0 0 0.5rem 0;
+  color: #ff6b6b;
+  font-size: 0.9rem;
+  text-transform: capitalize;
+}
+
+.timbre-controls {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.timbre-control {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.timbre-control label {
+  font-size: 0.8rem;
+  color: #cccccc;
+}
+
+.timbre-control span {
+  font-size: 0.8rem;
+  color: #fff;
+  font-weight: bold;
 }
 </style>

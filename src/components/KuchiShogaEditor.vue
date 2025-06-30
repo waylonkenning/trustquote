@@ -118,6 +118,22 @@
         >
           Stop
         </button>
+        <div data-testid="ensemble-audio-controls" class="ensemble-audio-controls">
+          <label>Master Volume:</label>
+          <input 
+            data-testid="master-volume"
+            type="range"
+            min="0"
+            max="100"
+            v-model="masterVolume"
+            class="volume-slider"
+            @input="updateMasterVolume"
+          />
+          <span>{{ masterVolume }}%</span>
+        </div>
+        <div v-if="isEnsemblePlaying" data-testid="master-beat-indicator" class="master-beat-indicator">
+          Beat: {{ currentBeat + 1 }}
+        </div>
         <input 
           data-testid="ensemble-tempo"
           type="range"
@@ -221,14 +237,6 @@
         <div class="part-controls">
           <div v-if="composition.isEnsemble" class="ensemble-part-controls">
             <button 
-              :data-testid="`mute-button`"
-              @click="toggleMute(part)"
-              class="control-btn mute-btn"
-              :class="{ active: part.isMuted }"
-            >
-              M
-            </button>
-            <button 
               :data-testid="`solo-button`"
               @click="toggleSolo(part)"
               class="control-btn solo-btn"
@@ -237,6 +245,14 @@
               S
             </button>
             <div v-if="isEnsemblePlaying" data-testid="playing-indicator" class="playing-indicator">♪</div>
+          <button 
+            data-testid="mute-button"
+            @click="toggleMute(part)"
+            class="control-btn mute-btn"
+            :class="{ active: part.isMuted }"
+          >
+            M
+          </button>
           </div>
           
           <label class="checkbox-label">
@@ -260,9 +276,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import PatternInput from './PatternInput.vue'
 import PronunciationGuide from './PronunciationGuide.vue'
+import { audioService } from '@/services/audioService'
 import type { Composition, DrumType, DrumRole, CompositionPart } from '@/types/composition'
 
 interface Props {
@@ -282,6 +299,8 @@ const newPartRole = ref<DrumRole>('lead')
 const showSticking = ref(false)
 const ensembleView = ref<'overview' | 'hierarchy' | 'mixer'>('overview')
 const isEnsemblePlaying = ref(false)
+const masterVolume = ref(70)
+const currentBeat = ref(0)
 
 const addPart = () => {
   if (props.composition.isEnsemble) {
@@ -383,15 +402,51 @@ const toggleSolo = (part: CompositionPart) => {
   }
 }
 
-const toggleEnsemblePlayback = () => {
-  isEnsemblePlaying.value = !isEnsemblePlaying.value
-  if (!isEnsemblePlaying.value) {
+const toggleEnsemblePlayback = async () => {
+  if (isEnsemblePlaying.value) {
     stopEnsemblePlayback()
+  } else {
+    await startEnsemblePlayback()
+  }
+}
+
+const startEnsemblePlayback = async () => {
+  try {
+    await audioService.initialize()
+    
+    const activeParts = props.composition.parts.map(part => ({
+      pattern: part.pattern || '',
+      drumType: part.drumType,
+      volume: (part.volume / 100) * (!part.isMuted ? 1 : 0),
+      isMuted: part.isMuted || false
+    }))
+    
+    audioService.setOnBeatCallback((beat) => {
+      currentBeat.value = beat
+    })
+    
+    isEnsemblePlaying.value = true
+    await audioService.playEnsemblePattern(
+      activeParts,
+      props.composition.tempo || 120,
+      false // loop disabled for now
+    )
+    
+    // Auto-stop when pattern completes (if not looping)
+    // This will be handled by the audio service
+  } catch (error) {
+    console.error('Failed to start ensemble playback:', error)
   }
 }
 
 const stopEnsemblePlayback = () => {
   isEnsemblePlaying.value = false
+  audioService.stopPattern()
+  currentBeat.value = 0
+}
+
+const updateMasterVolume = () => {
+  audioService.setMasterVolume(masterVolume.value / 100)
 }
 
 const autoBalance = () => {
@@ -413,6 +468,20 @@ const autoBalance = () => {
     }
   })
 }
+
+// Initialize audio service and cleanup
+onMounted(async () => {
+  try {
+    await audioService.initialize()
+    audioService.setMasterVolume(masterVolume.value / 100)
+  } catch (error) {
+    console.error('Failed to initialize ensemble audio:', error)
+  }
+})
+
+onBeforeUnmount(() => {
+  stopEnsemblePlayback()
+})
 </script>
 
 <style scoped>
@@ -883,5 +952,27 @@ const autoBalance = () => {
 @keyframes pulse {
   from { opacity: 0.5; }
   to { opacity: 1; }
+}
+
+.ensemble-audio-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #cccccc;
+  font-size: 0.9rem;
+}
+
+.ensemble-audio-controls .volume-slider {
+  width: 80px;
+  accent-color: #ff6b6b;
+}
+
+.master-beat-indicator {
+  color: #ff6b6b;
+  font-weight: bold;
+  font-size: 0.9rem;
+  background: #333;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
 }
 </style>
